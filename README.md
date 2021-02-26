@@ -20,8 +20,8 @@ You do not need to build the Jar in order to use the custom policy.
 When you use the policy to sign a request, AWS will accept the authenticated request.
 
 The policy sets the appropriate headers in the AWS request:
-- Authorization (with the appropriate signature)
-- x-amz-date
+- Authorization - with the appropriate signature
+- x-amz-date - with the appropriate date representing "now"
 - (optionally) x-amz-content-sha256
 
 
@@ -47,9 +47,15 @@ Example:
 ```
 
 The properties should be self-explanatory.
-The optional property:
 
-- sign-content-sha256.  When true, the policy adds a header `x-amz-content-sha256` which holds the SHA256 of the content (payload) for the message. It also includes that header in the signed headers.
+The `source` should be a Message that you have previously created with `AssignMessage`.
+
+The policy will inject headers: `x-amz-date` and for `authorization`.
+
+The optional property, `sign-content-sha256`, when true, tells the policy to add
+a header `x-amz-content-sha256` which holds the SHA256 of the content (payload)
+for the message. The policy also includes that header in the signed headers. Not
+all AWS endpoints require this.
 
 For example, for a request like: `POST https://example.amazonaws.com/?Param1=value1`,
 
@@ -93,6 +99,13 @@ If you edit policies offline, copy [the jar file for the custom
 policy](callout/target/apigee-callout-awsv4sig-20210225.jar) to your
 apiproxy/resources/java directory.  If you don't edit proxy bundles offline,
 upload that jar file into the API Proxy via the Apigee API Proxy Editor .
+
+## Bugs
+
+1. The tests work only on older test vectors provided by AWS.
+   There are no end-to-end tests  that actually connect with an AWS endpoint.
+
+2. There is no example proxy bundle
 
 
 ## Author
