@@ -1,0 +1,10 @@
+Thursday, 25 February 2021, 21:07
+
+I downloaded this from the AWS SDK test suite.
+https://docs.aws.amazon.com/general/latest/gr/samples/aws-sig-v4-test-suite.zip
+
+Needed to change data for one of the tests:
+post-x-www-form-urlencoded
+
+The test data was apparently incorrect.
+See https://forums.developer.amazon.com/questions/210382/canonical-request-digest-of-post-example-in-signat.html
