@@ -27,6 +27,7 @@ import com.apigee.flow.execution.ExecutionResult;
 import com.apigee.flow.execution.spi.Execution;
 import com.apigee.flow.message.Message;
 import com.apigee.flow.message.MessageContext;
+import com.google.apigee.encoding.Base16;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -52,8 +53,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
   }
 
   protected static String hex(byte[] a) {
-    // return org.bouncycastle.util.encoders.Hex.toHexString(a);
-    return com.google.apigee.encoding.Base16.encode(a);
+    return Base16.encode(a);
   }
 
   protected static byte[] sha256(String s) throws java.security.NoSuchAlgorithmException {
@@ -144,8 +144,25 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
     return result;
   }
 
-  public static String encodeSpaces(String s) {
-    return s.replaceAll(" ", "%20");
+  public static String uriEncode(CharSequence input, boolean encodeSlash) {
+    StringBuilder result = new StringBuilder();
+    for (int i = 0; i < input.length(); i++) {
+      char ch = input.charAt(i);
+      if ((ch >= 'A' && ch <= 'Z')
+          || (ch >= 'a' && ch <= 'z')
+          || (ch >= '0' && ch <= '9')
+          || ch == '_'
+          || ch == '-'
+          || ch == '~'
+          || ch == '.') {
+        result.append(ch);
+      } else if (ch == '/') {
+        result.append(encodeSlash ? "%2F" : ch);
+      } else {
+        result.append("%").append(Base16.byteToHex((byte) ch));
+      }
+    }
+    return result.toString();
   }
 
   public static String normalizeSpace(String s) {
@@ -164,7 +181,8 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
     // (1) https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
     List<String> canonicalRequestLines = new ArrayList<>();
     canonicalRequestLines.add(message.getVariable("verb").toString().toUpperCase());
-    canonicalRequestLines.add(encodeSpaces(normalizePath(message.getVariable("path").toString())));
+    canonicalRequestLines.add(
+        uriEncode(normalizePath(message.getVariable("path").toString()), false));
 
     List<String> encodedQparams = new ArrayList<String>();
     List<String> qparamList = new ArrayList<String>(message.getQueryParamNames());
@@ -263,7 +281,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
               + signatureAuthorizationHeader);
     } catch (Exception e) {
       if (debug) {
-        // e.printStackTrace();
+        e.printStackTrace();
         msgCtxt.setVariable(varName("stacktrace"), exceptionStackTrace(e));
       }
       setExceptionVariables(e, msgCtxt);
