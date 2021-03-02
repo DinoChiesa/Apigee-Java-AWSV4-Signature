@@ -65,7 +65,7 @@ public abstract class SignatureCalloutBase {
     }
     value = resolveVariableReferences(value, msgCtxt);
     if (value == null || value.equals("")) {
-      throw new IllegalStateException(name + " resolves to null or empty.");
+      value = defaultValue;
     }
     return value;
   }
@@ -76,6 +76,10 @@ public abstract class SignatureCalloutBase {
     if (value == null)
       throw new IllegalStateException(String.format("%s resolves to null or empty.", name));
     return value;
+  }
+
+  protected String _getOptionalString(MessageContext msgCtxt, String name) {
+    return _getStringProp(msgCtxt, name, null);
   }
 
   private String resolveVariableReferences(String spec, MessageContext msgCtxt) {

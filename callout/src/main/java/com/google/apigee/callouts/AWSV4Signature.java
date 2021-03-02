@@ -36,7 +36,9 @@ import java.security.MessageDigest;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -69,21 +71,13 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
     return mac.doFinal(data.getBytes("UTF-8"));
   }
 
-  static byte[] getSigningKey(String key, String dateStamp, String regionName, String serviceName)
-      throws Exception {
-    byte[] kSecret = ("AWS4" + key).getBytes("UTF-8");
-    byte[] kDate = hmacsha256(dateStamp, kSecret);
-    byte[] kRegion = hmacsha256(regionName, kDate);
-    byte[] kService = hmacsha256(serviceName, kRegion);
-    byte[] kSigning = hmacsha256("aws4_request", kService);
-    return kSigning;
-  }
-
   private Message getSource(MessageContext msgCtxt) {
-    String sourceVar = _getRequiredString(msgCtxt, "source");
+    String sourceVar = _getOptionalString(msgCtxt, "source");
+    if (sourceVar == null) {
+      return null;
+    }
+
     Message sourceMessage = (Message) msgCtxt.getVariable(sourceVar);
-    if (sourceMessage == null)
-      throw new IllegalStateException("source does not resolve to a message.");
     return sourceMessage;
   }
 
@@ -113,6 +107,8 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
 
   private static void clearVariables(MessageContext msgCtxt) {
     msgCtxt.removeVariable(varName("error"));
+    msgCtxt.removeVariable(varName("creq"));
+    msgCtxt.removeVariable(varName("sts"));
     msgCtxt.removeVariable(varName("exception"));
     msgCtxt.removeVariable(varName("stacktrace"));
   }
@@ -177,41 +173,33 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
     return normalizedPath;
   }
 
-  private static Canonicalized getCanonicalRequest(Message message, String contentSha256) {
+  private static Canonicalized getCanonicalRequest(SignConfiguration signConfig) {
     // (1) https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
     List<String> canonicalRequestLines = new ArrayList<>();
-    canonicalRequestLines.add(message.getVariable("verb").toString().toUpperCase());
-    canonicalRequestLines.add(
-        uriEncode(normalizePath(message.getVariable("path").toString()), false));
+    canonicalRequestLines.add(signConfig.verb);
+    canonicalRequestLines.add(uriEncode(normalizePath(signConfig.path), false));
+    canonicalRequestLines.add(signConfig.encodedQparams.stream().collect(Collectors.joining("&")));
 
-    List<String> encodedQparams = new ArrayList<String>();
-    List<String> qparamList = new ArrayList<String>(message.getQueryParamNames());
-    Collections.sort(qparamList);
-    for (String paramName : qparamList) {
-      List<String> paramValues = message.getQueryParams(paramName);
-      Collections.sort(paramValues);
-      for (String paramValue : paramValues) {
-        encodedQparams.add(encodeURIComponent(paramName) + "=" + encodeURIComponent(paramValue));
+    String signedHeaders = null;
+    if (signConfig.sourceMessage != null) {
+      for (Map.Entry<String, String> entry : signConfig.headers.entrySet()) {
+        canonicalRequestLines.add(entry.getKey() + ":" + entry.getValue());
       }
+      signedHeaders = signConfig.headers.keySet().stream().collect(Collectors.joining(";"));
     }
-    canonicalRequestLines.add(encodedQparams.stream().collect(Collectors.joining("&")));
-
-    List<String> hashedHeaders = new ArrayList<>();
-    List<String> headerList = new ArrayList<String>(message.getHeaderNames());
-    Collections.sort(headerList);
-    for (String headerName : headerList) {
-      List<String> headerValues = message.getHeaders(headerName);
-      hashedHeaders.add(headerName.toLowerCase());
-      String joinedValue =
-          headerValues.stream().map(s -> normalizeSpace(s)).collect(Collectors.joining(","));
-      canonicalRequestLines.add(headerName.toLowerCase() + ":" + joinedValue);
+    else {
+      // this is for constructing a presigned URL for a GET request; there are no headers
+      canonicalRequestLines.add("host:" + signConfig.host);
+      signedHeaders = "host";
     }
     canonicalRequestLines.add(null); // new line required after headers
-
-    String signedHeaders = hashedHeaders.stream().collect(Collectors.joining(";"));
     canonicalRequestLines.add(signedHeaders);
-    if (contentSha256 != null) {
-      canonicalRequestLines.add(contentSha256);
+
+    if (signConfig.sourceMessage != null) {
+      canonicalRequestLines.add(signConfig.contentSha256);
+    }
+    else {
+      canonicalRequestLines.add("UNSIGNED-PAYLOAD");
     }
     return new Canonicalized(
         signedHeaders,
@@ -220,65 +208,186 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
             .collect(Collectors.joining("\n")));
   }
 
+
+  public class SignConfiguration {
+    Message sourceMessage;
+    String endpoint;
+    String host;
+    String verb;
+    String path;
+    String dateTimeStamp;
+    String region;
+    String service;
+    String dateStamp;
+    String contentSha256;
+    String secret;
+    String key;
+    boolean wantSignedContentSha256;
+    String scope;
+    String stringToSign;
+    String output;
+    String expiry;
+    MessageContext msgCtxt;
+    List<String> encodedQparams = new ArrayList<String>();
+    Map<String, String> headers = new TreeMap<String, String>();
+
+    private void applyDate(String dateOverride) {
+      if (dateOverride != null) {
+        this.dateTimeStamp = dateOverride;
+      } else {
+        ZonedDateTime now = ZonedDateTime.now();
+        this.dateTimeStamp = xAmzDateFormatter.format(now);
+      }
+      this.dateStamp = this.dateTimeStamp.substring(0, 8);
+    }
+
+    private void setScope() {
+      scope = this.dateStamp + "/" + this.region + "/" + this.service + "/aws4_request";
+    }
+
+    public SignConfiguration(MessageContext msgCtxt) throws Exception {
+      wantSignedContentSha256 = false;
+      this.msgCtxt = msgCtxt;
+
+      endpoint = getEndpoint(msgCtxt);
+      host = endpoint.substring(8);
+      // TODO: validate the endpoint
+      region = getRegion(msgCtxt);
+      service = getService(msgCtxt);
+      secret = getSecret(msgCtxt);
+      key = getKey(msgCtxt);
+
+      sourceMessage = getSource(msgCtxt);
+
+      if (sourceMessage != null) {
+        // get configuration from a previously created message
+        verb = sourceMessage.getVariable("verb").toString().toUpperCase();
+        path = sourceMessage.getVariable("path").toString();
+        applyDate(sourceMessage.getHeader("x-amz-date"));
+        String content = sourceMessage.getContent();
+        contentSha256 = (content == null) ? hex(sha256("")) : hex(sha256(content));
+
+        this.wantSignedContentSha256 = wantSignedContentSha256(msgCtxt);
+        if (wantSignedContentSha256) {
+          headers.put("x-amz-content-sha256", contentSha256);
+        }
+
+        // pre-process headers
+        List<String> headerList = new ArrayList<String>(sourceMessage.getHeaderNames());
+        Collections.sort(headerList);
+        for (String headerName : headerList) {
+          List<String> headerValues = sourceMessage.getHeaders(headerName);
+          String joinedValue =
+              headerValues.stream().map(s -> normalizeSpace(s)).collect(Collectors.joining(","));
+          headers.put(headerName.toLowerCase(), joinedValue);
+        }
+
+        // pre-process qparams
+        List<String> qparamList = new ArrayList<String>(sourceMessage.getQueryParamNames());
+        Collections.sort(qparamList);
+        for (String paramName : qparamList) {
+          List<String> paramValues = sourceMessage.getQueryParams(paramName);
+          Collections.sort(paramValues);
+          for (String paramValue : paramValues) {
+            encodedQparams.add(
+                encodeURIComponent(paramName) + "=" + encodeURIComponent(paramValue));
+          }
+        }
+        setScope();
+
+      } else {
+        // get config from individual properties
+        verb = _getOptionalString(msgCtxt, "request-verb");
+        path = _getOptionalString(msgCtxt, "request-path");
+        applyDate(_getOptionalString(msgCtxt, "request-date"));
+        contentSha256 = hex(sha256(""));
+
+        if (path == null) {
+          throw new IllegalStateException("neither source nor verb is specified.");
+        }
+        if (path == null) {
+          throw new IllegalStateException("neither source nor path is specified.");
+        }
+
+        expiry = _getRequiredString(msgCtxt, "request-expiry");
+        // TODO: perform time validation and resolution here
+
+        output = _getRequiredString(msgCtxt, "output");
+
+        setScope();
+
+        // pre-load qparams here
+        encodedQparams.add("X-Amz-Algorithm=AWS4-HMAC-SHA256");
+        encodedQparams.add("X-Amz-Credential=" + uriEncode(key + "/" + scope, true));
+        encodedQparams.add("X-Amz-Date=" + dateTimeStamp);
+        encodedQparams.add("X-Amz-Expires=" + expiry);
+        encodedQparams.add("X-Amz-SignedHeaders=host");
+      }
+    }
+
+    public String computeStringToSign(Canonicalized canonicalized) throws Exception {
+      List<String> stringToSignLines = new ArrayList<>();
+      stringToSignLines.add("AWS4-HMAC-SHA256");
+      stringToSignLines.add(dateTimeStamp);
+      stringToSignLines.add(scope);
+      stringToSignLines.add(hex(sha256(canonicalized.request)));
+      stringToSign = stringToSignLines.stream().collect(Collectors.joining("\n"));
+      return stringToSign;
+    }
+
+    public byte[] getSigningKey() throws Exception {
+      byte[] kSecret = ("AWS4" + secret).getBytes("UTF-8");
+      byte[] kDate = hmacsha256(dateStamp, kSecret);
+      byte[] kRegion = hmacsha256(region, kDate);
+      byte[] kService = hmacsha256(service, kRegion);
+      byte[] kSigning = hmacsha256("aws4_request", kService);
+      return kSigning;
+    }
+
+    public void emitOutput(Canonicalized canonicalized) throws Exception {
+
+      final byte[] signature = hmacsha256(stringToSign, getSigningKey());
+
+      if (sourceMessage != null) {
+        if (wantSignedContentSha256) {
+          sourceMessage.setHeader("x-amz-content-sha256", contentSha256);
+        }
+
+        sourceMessage.setHeader("x-amz-date", dateTimeStamp);
+        sourceMessage.setHeader("Host", host);
+        String credentials = "Credential=" + key + "/" + scope;
+        String signedHeaders = "SignedHeaders=" + canonicalized.signedHeaders;
+        String signatureString = "Signature=" + hex(signature);
+
+        sourceMessage.setHeader(
+            "Authorization",
+            "AWS4-HMAC-SHA256 " + credentials + ", " + signedHeaders + ", " + signatureString);
+      } else {
+        encodedQparams.add("X-Amz-Signature=" + hex(signature));
+
+        String constructedUrl =
+            String.format(
+                "%s%s?%s", endpoint, path, encodedQparams.stream().collect(Collectors.joining("&")));
+        msgCtxt.setVariable(output, constructedUrl);
+      }
+    }
+  }
+
+
   public ExecutionResult execute(MessageContext msgCtxt, ExecutionContext exeCtxt) {
     boolean debug = false;
     try {
       clearVariables(msgCtxt);
       debug = getDebug(msgCtxt);
-      String dateTimeStamp = null;
-      Message sourceMessage = getSource(msgCtxt);
-      String content = sourceMessage.getContent();
-
-      String contentSha256 =
-          (sourceMessage.getContent() == null)
-              ? hex(sha256(""))
-              : hex(sha256(sourceMessage.getContent()));
-      String endpoint = getEndpoint(msgCtxt);
-
-      if (sourceMessage.getHeader("x-amz-date") != null) {
-        dateTimeStamp = sourceMessage.getHeader("x-amz-date");
-      } else {
-        ZonedDateTime now = ZonedDateTime.now();
-        dateTimeStamp = xAmzDateFormatter.format(now);
-        sourceMessage.setHeader("x-amz-date", dateTimeStamp);
-      }
-      if (wantSignedContentSha256(msgCtxt)) {
-        sourceMessage.setHeader("x-amz-content-sha256", contentSha256);
-      }
-      sourceMessage.setHeader("Host", endpoint.substring(8));
-
-      final Canonicalized canonicalized = getCanonicalRequest(sourceMessage, contentSha256);
+      SignConfiguration signConfig = new SignConfiguration(msgCtxt);
+      final Canonicalized canonicalized = getCanonicalRequest(signConfig);
       msgCtxt.setVariable(varName("creq"), canonicalized.request);
 
-      String dateStamp = dateTimeStamp.substring(0, 8);
-      String region = getRegion(msgCtxt);
-      String service = getService(msgCtxt);
-      String scope = dateStamp + "/" + region + "/" + service + "/aws4_request";
-
-      List<String> strignToSignLines = new ArrayList<>();
-      strignToSignLines.add("AWS4-HMAC-SHA256");
-      strignToSignLines.add(dateTimeStamp);
-      strignToSignLines.add(scope);
-      strignToSignLines.add(hex(sha256(canonicalized.request)));
-      String stringToSign = strignToSignLines.stream().collect(Collectors.joining("\n"));
+      final String stringToSign = signConfig.computeStringToSign(canonicalized);
       msgCtxt.setVariable(varName("sts"), stringToSign);
 
-      byte[] signingKey = getSigningKey(getSecret(msgCtxt), dateStamp, region, service);
+      signConfig.emitOutput(canonicalized);
 
-      final byte[] signature = hmacsha256(stringToSign, signingKey);
-      final String credentialsAuthorizationHeader = "Credential=" + getKey(msgCtxt) + "/" + scope;
-      final String signedHeadersAuthorizationHeader =
-          "SignedHeaders=" + canonicalized.signedHeaders;
-      final String signatureAuthorizationHeader = "Signature=" + hex(signature);
-
-      sourceMessage.setHeader(
-          "Authorization",
-          "AWS4-HMAC-SHA256 "
-              + credentialsAuthorizationHeader
-              + ", "
-              + signedHeadersAuthorizationHeader
-              + ", "
-              + signatureAuthorizationHeader);
     } catch (Exception e) {
       if (debug) {
         e.printStackTrace();

@@ -4,7 +4,7 @@
 
   <groupId>com.google.apigee</groupId>
   <artifactId>apigee-callout-awsv4sig</artifactId>
-  <version>20210225</version>
+  <version>20210301</version>
   <name>ApigeeAwsV4Sig</name>
   <url>http://maven.apache.org</url>
   <packaging>jar</packaging>
@@ -23,14 +23,6 @@
   </properties>
 
   <dependencies>
-<!--
-    <dependency>
-      <groupId>org.bouncycastle</groupId>
-      <artifactId>bcprov-jdk15on</artifactId>
-      <version>${bouncycastle.version}</version>
-    </dependency>
-
--->
     <dependency>
       <groupId>com.apigee.edge</groupId>
       <artifactId>message-flow</artifactId>
