@@ -1,7 +1,7 @@
 # AWS V4 Signature callout
 
 This directory contains the Java source code for a Java callout for Apigee
-that constructs an AWS V4 Signature. The signature can  be used in one of two forms:
+that constructs an AWS V4 Signature. The signature can be used in one of two forms:
 
 - to generate a set of headers (Authorization, x-amz-date, and possibly others) on an existing Message in Apigee
 - to generate a "presigned URL".
@@ -12,6 +12,13 @@ client (possibly via 302 redirect), which allows the client to connect directly 
 
 This Java callout has no dependencies on the AWS SDK; instead it
 follows the described signature process in the AWS Documentation.
+
+There is a similar callout [available from micovery
+here](https://github.com/micovery/apigee-java-callout-aws-signature-v4). The main difference between that one and this one:
+
+* the microvery callout relies on the AWS Java SDK to compute the signatures. This is a larger JAR and it may pull in some other dependencies. Using this JAR may produce a "heavier" API proxy.
+
+* this callout here relies solely on the JRE to compute the required HMACs. There are no additional external dependencies. For that reason it may be lighter weight.
 
 
 ## License
@@ -162,11 +169,10 @@ upload that jar file into the API Proxy via the Apigee API Proxy Editor .
 1. There are no end-to-end tests that actually connect with an AWS endpoint.
    The tests work only on test vectors provided previously by AWS.
 
-
 2. There is no example proxy bundle
 
 
 ## Author
 
-Dino Chiesa
+Dino Chiesa   
 godino@google.com
