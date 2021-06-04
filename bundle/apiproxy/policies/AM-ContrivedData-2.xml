@@ -1,0 +1,40 @@
+<AssignMessage name='AM-ContrivedData-2'>
+  <!-- This is contrived, example data. Never embed secrets into configuration files. -->
+  <!-- use the KVM -->
+  <AssignVariable>
+    <Name>private.accessKeyId</Name>
+    <Value>AKIDEXAMPLE</Value>
+  </AssignVariable>
+
+  <AssignVariable>
+    <Name>private.secretAccessKey</Name>
+    <Value>wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY</Value>
+  </AssignVariable>
+
+  <AssignVariable>
+    <Name>aws-service</Name>
+    <Value>service</Value>
+  </AssignVariable>
+
+  <AssignVariable>
+    <Name>aws-region</Name>
+    <Value>us-east-1</Value>
+  </AssignVariable>
+
+  <AssignVariable>
+    <Name>endpoint-host</Name>
+    <Value>example.amazonaws.com</Value>
+  </AssignVariable>
+
+  <AssignTo createNew='true' type='request'>outgoingAwsMessage</AssignTo>
+  <Set>
+    <Headers>
+      <Header name='X-Amz-Date'>20150830T123600Z</Header>
+    </Headers>
+    <QueryParams>
+      <QueryParam name='Param1'>value1</QueryParam>
+    </QueryParams>
+    <Verb>POST</Verb>
+    <Path>/</Path>
+  </Set>
+</AssignMessage>

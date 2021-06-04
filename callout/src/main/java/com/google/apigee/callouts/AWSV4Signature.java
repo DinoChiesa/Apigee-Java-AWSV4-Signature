@@ -36,11 +36,10 @@ import java.security.MessageDigest;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -186,8 +185,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
         canonicalRequestLines.add(entry.getKey() + ":" + entry.getValue());
       }
       signedHeaders = signConfig.headers.keySet().stream().collect(Collectors.joining(";"));
-    }
-    else {
+    } else {
       // this is for constructing a presigned URL for a GET request; there are no headers
       canonicalRequestLines.add("host:" + signConfig.host);
       signedHeaders = "host";
@@ -197,8 +195,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
 
     if (signConfig.sourceMessage != null) {
       canonicalRequestLines.add(signConfig.contentSha256);
-    }
-    else {
+    } else {
       canonicalRequestLines.add("UNSIGNED-PAYLOAD");
     }
     return new Canonicalized(
@@ -207,7 +204,6 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
             .map(line -> line == null ? "" : line)
             .collect(Collectors.joining("\n")));
   }
-
 
   public class SignConfiguration {
     Message sourceMessage;
@@ -223,6 +219,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
     String secret;
     String key;
     boolean wantSignedContentSha256;
+    boolean debug;
     String scope;
     String stringToSign;
     String output;
@@ -245,8 +242,9 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
       scope = this.dateStamp + "/" + this.region + "/" + this.service + "/aws4_request";
     }
 
-    public SignConfiguration(MessageContext msgCtxt) throws Exception {
+    public SignConfiguration(MessageContext msgCtxt, boolean debug) throws Exception {
       wantSignedContentSha256 = false;
+      this.debug = debug;
       this.msgCtxt = msgCtxt;
 
       endpoint = getEndpoint(msgCtxt);
@@ -281,12 +279,16 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
               headerValues.stream().map(s -> normalizeSpace(s)).collect(Collectors.joining(","));
           headers.put(headerName.toLowerCase(), joinedValue);
         }
+        if (!headers.containsKey("host")) {
+          headers.put("host", host);
+        }
 
         // pre-process qparams
         List<String> qparamList = new ArrayList<String>(sourceMessage.getQueryParamNames());
         Collections.sort(qparamList);
         for (String paramName : qparamList) {
-          List<String> paramValues = sourceMessage.getQueryParams(paramName);
+          List<String> unmodifiableList = sourceMessage.getQueryParams(paramName);
+          List<String> paramValues = new ArrayList<String>(unmodifiableList);
           Collections.sort(paramValues);
           for (String paramValue : paramValues) {
             encodedQparams.add(
@@ -359,27 +361,30 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
         String signedHeaders = "SignedHeaders=" + canonicalized.signedHeaders;
         String signatureString = "Signature=" + hex(signature);
 
-        sourceMessage.setHeader(
-            "Authorization",
-            "AWS4-HMAC-SHA256 " + credentials + ", " + signedHeaders + ", " + signatureString);
+        String authzHeader =
+            "AWS4-HMAC-SHA256 " + credentials + ", " + signedHeaders + ", " + signatureString;
+        sourceMessage.setHeader("Authorization", authzHeader);
+        if (debug) {
+          msgCtxt.setVariable(varName("authz-header"), authzHeader);
+        }
       } else {
         encodedQparams.add("X-Amz-Signature=" + hex(signature));
 
         String constructedUrl =
             String.format(
-                "%s%s?%s", endpoint, path, encodedQparams.stream().collect(Collectors.joining("&")));
+                "%s%s?%s",
+                endpoint, path, encodedQparams.stream().collect(Collectors.joining("&")));
         msgCtxt.setVariable(output, constructedUrl);
       }
     }
   }
-
 
   public ExecutionResult execute(MessageContext msgCtxt, ExecutionContext exeCtxt) {
     boolean debug = false;
     try {
       clearVariables(msgCtxt);
       debug = getDebug(msgCtxt);
-      SignConfiguration signConfig = new SignConfiguration(msgCtxt);
+      SignConfiguration signConfig = new SignConfiguration(msgCtxt, debug);
       final Canonicalized canonicalized = getCanonicalRequest(signConfig);
       msgCtxt.setVariable(varName("creq"), canonicalized.request);
 

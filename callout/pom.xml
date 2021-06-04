@@ -4,7 +4,7 @@
 
   <groupId>com.google.apigee</groupId>
   <artifactId>apigee-callout-awsv4sig</artifactId>
-  <version>20210301</version>
+  <version>20210603</version>
   <name>ApigeeAwsV4Sig</name>
   <url>http://maven.apache.org</url>
   <packaging>jar</packaging>
@@ -143,7 +143,7 @@
             <configuration>
               <rules>
                 <requireMavenVersion>
-                  <version>3.0.5</version>
+                  <version>3.5.0</version>
                 </requireMavenVersion>
               </rules>
             </configuration>

@@ -1,0 +1,20 @@
+<AssignMessage name='AM-ContrivedData-1'>
+  <!-- This is contrived, example data. Never embed secrets into configuration files. -->
+  <!-- use the KVM -->
+  <AssignVariable>
+    <Name>private.aws-key</Name>
+    <Value>ABCDEFGHIJKL</Value>
+  </AssignVariable>
+
+  <AssignVariable>
+    <Name>private.aws-secret-key</Name>
+    <Value>1234567890ABCDEFGHIJKL</Value>
+  </AssignVariable>
+
+  <AssignTo createNew='true' type='request'>outgoingAwsMessage</AssignTo>
+  <Set>
+    <Payload contentType='application/json'>{}</Payload>
+    <Verb>POST</Verb>
+    <Path>/foo?Param1=7</Path>
+  </Set>
+</AssignMessage>

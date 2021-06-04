@@ -73,7 +73,7 @@ Example:
         <Property name="sign-content-sha256">true</Property> <!-- optional -->
     </Properties>
     <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-    <ResourceURL>java://apigee-callout-awsv4sig-20210301.jar</ResourceURL>
+    <ResourceURL>java://apigee-callout-awsv4sig-20210603.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -81,7 +81,7 @@ The properties should be self-explanatory.
 
 The `source` should be a Message that you have previously created with `AssignMessage`.
 
-The policy will inject headers: `x-amz-date` and for `authorization`.
+The policy will inject headers: `x-amz-date` and `authorization`, and optionally `host`.
 
 The optional property, `sign-content-sha256`, when true, tells the policy to add
 a header `x-amz-content-sha256` which holds the SHA256 of the content (payload)
@@ -90,7 +90,7 @@ all AWS endpoints require this.
 
 For example, for a request like: `POST https://example.amazonaws.com/?Param1=value1`,
 
-...assuming the date is 20150830T123600Z, the resulting Authorization header will be:
+...with no payload, and assuming the date is 20150830T123600Z, the resulting Authorization header will have the value:
 
 ```
 AWS4-HMAC-SHA256
@@ -103,6 +103,18 @@ Signature=28038455d6de14eafc1f9222cf5aa6f1a96197d7deb8263271d420d138af7f11
 
 This is from a test case provided by Amazon.
 
+### Note about the Authorization Header
+
+After the policy runs, the `authorization` header will contain the required
+AWSv4 Authorization header for the given request. By default you will not be
+able to see this value.
+
+If you specify the `debug` property as `true`, you will see the value of the
+generated authorization header in the context variable
+`awsv4sig_authz-header`. By default the callout does not emit that into a
+context variable, because it is sensitive information and it's better not to
+display that in Apigee Trace. In all cases, the callout will apply that value
+into the Authorization header of the designated "source" message.
 
 ## Policy Configuration - Pre-Signed URL
 
@@ -130,12 +142,42 @@ Example:
         <Property name="output">my_context_var</Property>
     </Properties>
     <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-    <ResourceURL>java://apigee-callout-awsv4sig-20210301.jar</ResourceURL>
+    <ResourceURL>java://apigee-callout-awsv4sig-20210603.jar</ResourceURL>
 </JavaCallout>
 ```
 
 The policy will generate a presigned URL that matches what is given in the example [in the AWS S3 documentation](https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html).
 
+
+## Using the Example bundle
+
+Import the Example API proxy bundle into your organization, and deploy it into your environment.
+
+Then, enable trace, and invoke it with curl:
+```
+# For Apigee Edge
+endpoint=https://${ORG}-${ENV}.apigee.net
+# For Apigee X
+endpoint=https://your-endpoint-will-vary.net
+curl -i $endpoint/awsv4test/t1
+```
+
+You should see in the Trace, the output values for sts and creq.
+
+Now try the test case I mentioned above:
+
+```
+curl -i $endpoint/awsv4test/post-vanilla-empty-query-value
+```
+
+You should see in trace, the sts, the creq, as well as the value for the authorization header. It should be:
+```
+AWS4-HMAC-SHA256
+Credential=AKIDEXAMPLE/20150830/us-east-1/service/aws4_request,
+SignedHeaders=host;x-amz-date,
+Signature=28038455d6de14eafc1f9222cf5aa6f1a96197d7deb8263271d420d138af7f11
+```
+(all on one line)
 
 ## No Dependencies
 
@@ -160,7 +202,7 @@ To build: `mvn clean package`
 The Jar source code includes tests.
 
 If you edit policies offline, copy [the jar file for the custom
-policy](callout/target/apigee-callout-awsv4sig-20210301.jar) to your
+policy](callout/target/apigee-callout-awsv4sig-20210603.jar) to your
 apiproxy/resources/java directory.  If you don't edit proxy bundles offline,
 upload that jar file into the API Proxy via the Apigee API Proxy Editor .
 
@@ -168,8 +210,6 @@ upload that jar file into the API Proxy via the Apigee API Proxy Editor .
 
 1. There are no end-to-end tests that actually connect with an AWS endpoint.
    The tests work only on test vectors provided previously by AWS.
-
-2. There is no example proxy bundle
 
 
 ## Author

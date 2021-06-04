@@ -1,0 +1,14 @@
+<JavaCallout name='JC-AWSSignV4-POST-Vanilla-Empty-Query'>
+    <Properties>
+        <Property name="service">{aws-service}</Property>
+        <Property name="region">{aws-region}</Property>
+        <Property name="key">{private.accessKeyId}</Property>
+        <Property name="secret">{private.secretAccessKey}</Property>
+        <Property name="sign-content-sha256">false</Property>
+        <Property name="endpoint">https://{endpoint-host}</Property>
+        <Property name="source">outgoingAwsMessage</Property>
+        <Property name="debug">true</Property>
+    </Properties>
+    <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
+    <ResourceURL>java://apigee-callout-awsv4sig-20210603.jar</ResourceURL>
+</JavaCallout>
