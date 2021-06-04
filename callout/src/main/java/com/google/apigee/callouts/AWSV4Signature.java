@@ -172,39 +172,6 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
     return normalizedPath;
   }
 
-  private static Canonicalized getCanonicalRequest(SignConfiguration signConfig) {
-    // (1) https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
-    List<String> canonicalRequestLines = new ArrayList<>();
-    canonicalRequestLines.add(signConfig.verb);
-    canonicalRequestLines.add(uriEncode(normalizePath(signConfig.path), false));
-    canonicalRequestLines.add(signConfig.encodedQparams.stream().collect(Collectors.joining("&")));
-
-    String signedHeaders = null;
-    if (signConfig.sourceMessage != null) {
-      for (Map.Entry<String, String> entry : signConfig.headers.entrySet()) {
-        canonicalRequestLines.add(entry.getKey() + ":" + entry.getValue());
-      }
-      signedHeaders = signConfig.headers.keySet().stream().collect(Collectors.joining(";"));
-    } else {
-      // this is for constructing a presigned URL for a GET request; there are no headers
-      canonicalRequestLines.add("host:" + signConfig.host);
-      signedHeaders = "host";
-    }
-    canonicalRequestLines.add(null); // new line required after headers
-    canonicalRequestLines.add(signedHeaders);
-
-    if (signConfig.sourceMessage != null) {
-      canonicalRequestLines.add(signConfig.contentSha256);
-    } else {
-      canonicalRequestLines.add("UNSIGNED-PAYLOAD");
-    }
-    return new Canonicalized(
-        signedHeaders,
-        canonicalRequestLines.stream()
-            .map(line -> line == null ? "" : line)
-            .collect(Collectors.joining("\n")));
-  }
-
   public class SignConfiguration {
     Message sourceMessage;
     String endpoint;
@@ -262,6 +229,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
         verb = sourceMessage.getVariable("verb").toString().toUpperCase();
         path = sourceMessage.getVariable("path").toString();
         applyDate(sourceMessage.getHeader("x-amz-date"));
+
         String content = sourceMessage.getContent();
         contentSha256 = (content == null) ? hex(sha256("")) : hex(sha256(content));
 
@@ -281,6 +249,9 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
         }
         if (!headers.containsKey("host")) {
           headers.put("host", host);
+        }
+        if (!headers.containsKey("x-amz-date")) {
+          headers.put("x-amz-date", dateTimeStamp);
         }
 
         // pre-process qparams
@@ -377,6 +348,39 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
         msgCtxt.setVariable(output, constructedUrl);
       }
     }
+
+    public Canonicalized getCanonicalRequest() {
+      // (1) https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
+      List<String> canonicalRequestLines = new ArrayList<>();
+      canonicalRequestLines.add(this.verb);
+      canonicalRequestLines.add(uriEncode(normalizePath(this.path), false));
+      canonicalRequestLines.add(this.encodedQparams.stream().collect(Collectors.joining("&")));
+
+      String signedHeaders = null;
+      if (this.sourceMessage != null) {
+        for (Map.Entry<String, String> entry : this.headers.entrySet()) {
+          canonicalRequestLines.add(entry.getKey() + ":" + entry.getValue());
+        }
+        signedHeaders = this.headers.keySet().stream().collect(Collectors.joining(";"));
+      } else {
+        // this is for constructing a presigned URL for a GET request; there are no headers
+        canonicalRequestLines.add("host:" + this.host);
+        signedHeaders = "host";
+      }
+      canonicalRequestLines.add(null); // new line required after headers
+      canonicalRequestLines.add(signedHeaders);
+
+      if (this.sourceMessage != null) {
+        canonicalRequestLines.add(this.contentSha256);
+      } else {
+        canonicalRequestLines.add("UNSIGNED-PAYLOAD");
+      }
+      return new Canonicalized(
+          signedHeaders,
+          canonicalRequestLines.stream()
+              .map(line -> line == null ? "" : line)
+              .collect(Collectors.joining("\n")));
+    }
   }
 
   public ExecutionResult execute(MessageContext msgCtxt, ExecutionContext exeCtxt) {
@@ -385,7 +389,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
       clearVariables(msgCtxt);
       debug = getDebug(msgCtxt);
       SignConfiguration signConfig = new SignConfiguration(msgCtxt, debug);
-      final Canonicalized canonicalized = getCanonicalRequest(signConfig);
+      final Canonicalized canonicalized = signConfig.getCanonicalRequest();
       msgCtxt.setVariable(varName("creq"), canonicalized.request);
 
       final String stringToSign = signConfig.computeStringToSign(canonicalized);
