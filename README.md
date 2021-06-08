@@ -141,6 +141,8 @@ include:
 | awsv4sig\_creq | the canonicalized request string |
 | awsv4sig\_sts  | the "string to sign". In place of newlines, this string uses the ↵ character, for diagnostic purposes only. The actual string-to-sign uses newlines. |
 
+A view of these in the Trace UI:
+![screenshot](./images/Trace-UI-Variables-20210608-065012.png)
 
 ## Policy Configuration - Pre-Signed URL
 
