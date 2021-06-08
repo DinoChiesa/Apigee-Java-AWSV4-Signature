@@ -46,6 +46,7 @@ There are two ways to use the policy:
 In the first case,
 the policy sets the appropriate headers in the AWS request:
 - Authorization - with the appropriate signature
+- Host - with the endpoint hostname
 - x-amz-date - with the appropriate date representing "now"
 - (optionally) x-amz-content-sha256
 
@@ -73,7 +74,7 @@ Example:
         <Property name="sign-content-sha256">true</Property> <!-- optional -->
     </Properties>
     <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-    <ResourceURL>java://apigee-callout-awsv4sig-20210604.jar</ResourceURL>
+    <ResourceURL>java://apigee-callout-awsv4sig-20210608.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -103,18 +104,43 @@ Signature=28038455d6de14eafc1f9222cf5aa6f1a96197d7deb8263271d420d138af7f11
 
 This is from a test case provided by Amazon.
 
-### Note about the Authorization Header
+### Note about the Headers
 
-After the policy runs, the `authorization` header will contain the required
+The policy will set headers,  including `x-amz-date`, `host`, `authorization`, and
+optionally `x-amz-content-sha256`, in the source message.
+
+If you use Apigee trace, you will not see these values as they are set directly
+on the source message; this is a limitation of Apigee trace. The policy sets
+"shadow" context variables for all of the generated headers that contain
+non-sensitive information, including `x-amz-date`, `x-amz-content-sha256` and
+`host`. The names of the variables are like `awsv4sig_header.HEADERNAME`. These
+context variables get the same respective values as the actual headers on the
+message; they're set only for diagnostic purposes.
+
+As noted above, The policy sets the `authorization` header to contain the generated
 AWSv4 Authorization header for the given request. By default you will not be
 able to see this value.
 
-If you specify the `debug` property as `true`, you will see the value of the
-generated authorization header in the context variable
-`awsv4sig_authz-header`. By default the callout does not emit that into a
-context variable, because it is sensitive information and it's better not to
+If you specify the `debug` property as `true`, then the callout includes the
+`Authorization` header in the list of headers that get "shadowed" with context
+variables.
+
+By default the callout does not emit the `Authorization` header into
+a distinct context variable, because it is sensitive information and it's better not to
 display that in Apigee Trace. In all cases, the callout will apply that value
 into the Authorization header of the designated "source" message.
+
+### Other Context Variables
+
+The policy also sets other context variables, containing intermediate results
+from its operation; this is for diagnostic purposes only. These variables
+include:
+
+| variable       | description |
+| -------------- | ----------- |
+| awsv4sig\_creq | the canonicalized request string |
+| awsv4sig\_sts  | the "string to sign". In place of newlines, this string uses the ↵ character, for diagnostic purposes only. The actual string-to-sign uses newlines. |
+
 
 ## Policy Configuration - Pre-Signed URL
 
@@ -142,7 +168,7 @@ Example:
         <Property name="output">my_context_var</Property>
     </Properties>
     <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-    <ResourceURL>java://apigee-callout-awsv4sig-20210604.jar</ResourceURL>
+    <ResourceURL>java://apigee-callout-awsv4sig-20210608.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -202,7 +228,7 @@ To build: `mvn clean package`
 The Jar source code includes tests.
 
 If you edit policies offline, copy [the jar file for the custom
-policy](callout/target/apigee-callout-awsv4sig-20210604.jar) to your
+policy](callout/target/apigee-callout-awsv4sig-20210608.jar) to your
 apiproxy/resources/java directory.  If you don't edit proxy bundles offline,
 upload that jar file into the API Proxy via the Apigee API Proxy Editor .
 
@@ -214,5 +240,5 @@ upload that jar file into the API Proxy via the Apigee API Proxy Editor .
 
 ## Author
 
-Dino Chiesa   
+Dino Chiesa
 godino@google.com

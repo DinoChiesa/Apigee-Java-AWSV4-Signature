@@ -317,27 +317,30 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
       return kSigning;
     }
 
-    public void emitOutput(Canonicalized canonicalized) throws Exception {
+    private void setHeader(String headerName, String value, boolean sensitive) {
+      sourceMessage.setHeader(headerName, value);
+      if (debug || !sensitive) {
+        msgCtxt.setVariable(varName("header." + headerName), value);
+      }
+    }
 
+    public void emitOutput(Canonicalized canonicalized) throws Exception {
       final byte[] signature = hmacsha256(stringToSign, getSigningKey());
 
       if (sourceMessage != null) {
         if (wantSignedContentSha256) {
-          sourceMessage.setHeader("x-amz-content-sha256", contentSha256);
+          setHeader("x-amz-content-sha256", contentSha256, false);
         }
 
-        sourceMessage.setHeader("x-amz-date", dateTimeStamp);
-        sourceMessage.setHeader("Host", host);
+        setHeader("x-amz-date", dateTimeStamp, false);
+        setHeader("Host", host, false);
         String credentials = "Credential=" + key + "/" + scope;
         String signedHeaders = "SignedHeaders=" + canonicalized.signedHeaders;
         String signatureString = "Signature=" + hex(signature);
 
         String authzHeader =
             "AWS4-HMAC-SHA256 " + credentials + ", " + signedHeaders + ", " + signatureString;
-        sourceMessage.setHeader("Authorization", authzHeader);
-        if (debug) {
-          msgCtxt.setVariable(varName("authz-header"), authzHeader);
-        }
+        setHeader("Authorization", authzHeader, true);
       } else {
         encodedQparams.add("X-Amz-Signature=" + hex(signature));
 
@@ -393,7 +396,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
       msgCtxt.setVariable(varName("creq"), canonicalized.request);
 
       final String stringToSign = signConfig.computeStringToSign(canonicalized);
-      msgCtxt.setVariable(varName("sts"), stringToSign);
+      msgCtxt.setVariable(varName("sts"), stringToSign.replaceAll("\n","↵"));
 
       signConfig.emitOutput(canonicalized);
 

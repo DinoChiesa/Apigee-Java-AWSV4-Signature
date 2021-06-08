@@ -13,6 +13,10 @@
 
   <AssignTo createNew='true' type='request'>outgoingAwsMessage</AssignTo>
   <Set>
+    <Headers>
+      <Header name='x-api-key'>ABCDEFG</Header>
+    </Headers>
+
     <Payload contentType='application/json'>{}</Payload>
     <Verb>POST</Verb>
     <Path>/foo?Param1=7</Path>
