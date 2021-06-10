@@ -1,0 +1,39 @@
+<AssignMessage name='AM-ContrivedData-3'>
+  <!-- This is contrived, example data. Never embed secrets into configuration files. -->
+  <!-- use the KVM -->
+  <AssignVariable>
+    <Name>private.access-key-id</Name>
+    <Value>AKIDEXAMPLE</Value>
+  </AssignVariable>
+
+  <AssignVariable>
+    <Name>private.secret-access-key</Name>
+    <Value>wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY</Value>
+  </AssignVariable>
+
+  <AssignVariable>
+    <Name>aws-service</Name>
+    <Value>execute-api</Value>
+  </AssignVariable>
+
+  <AssignVariable>
+    <Name>aws-region</Name>
+    <Value>us-west-2</Value>
+  </AssignVariable>
+
+  <AssignVariable>
+    <Name>endpoint-host</Name>
+    <Value>stage.q2api.com</Value>
+  </AssignVariable>
+
+  <AssignTo createNew='true' type='request'>outgoingAwsMessage</AssignTo>
+  <Set>
+    <Headers>
+      <Header name='X-Amz-Date'>20210609T065036Z</Header>
+      <Header name='X-api-key'>pq8v6qmzy69zhJu2FBAls9Jrz6jUK76y2qa9wN0j</Header>
+    </Headers>
+    <Verb>POST</Verb>
+    <Path>/v1/LookupUser</Path>
+    <Payload contentType='application/json'>{ "foo" : "bar" }</Payload>
+  </Set>
+</AssignMessage>

@@ -11,7 +11,7 @@ Apigee. You can use the latter to generate a signed URL that you can send from A
 client (possibly via 302 redirect), which allows the client to connect directly to the resource.
 
 This Java callout has no dependencies on the AWS SDK; instead it
-follows the described signature process in the AWS Documentation.
+follows [the described signature process in the AWS Documentation](https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html).
 
 There is a similar callout [available from micovery
 here](https://github.com/micovery/apigee-java-callout-aws-signature-v4). The main difference between that one and this one:
@@ -74,7 +74,7 @@ Example:
         <Property name="sign-content-sha256">true</Property> <!-- optional -->
     </Properties>
     <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-    <ResourceURL>java://apigee-callout-awsv4sig-20210608.jar</ResourceURL>
+    <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -84,12 +84,21 @@ The `source` should be a Message that you have previously created with `AssignMe
 
 The policy will inject headers: `x-amz-date` and `authorization`, and optionally `host`.
 
-The optional property, `sign-content-sha256`, when true, tells the policy to add
-a header `x-amz-content-sha256` which holds the SHA256 of the content (payload)
-for the message. The policy also includes that header in the signed headers. Not
-all AWS endpoints require this.
+There are optional properties:
 
-For example, for a request like: `POST https://example.amazonaws.com/?Param1=value1`,
+* `sign-content-sha256`, when true, tells the policy to add a header
+  `x-amz-content-sha256` which holds the SHA256 of the content (payload) for the
+  message. The policy also includes that header in the signed headers. Not all
+  AWS endpoints require this.
+
+* `insure-trailing-slash`, when true, tells the policy to always insure that the
+  URL Path in the canonical request includes a trailing slash. Some endpoints
+  apparently require this. For example, suppose your message has
+  `/v1/LookupUser` as the path.  If you set the `insure-trailing-slash` to true,
+  then the canonical request will use `/v1/LookupUser/` as the path.
+
+
+For a request like: `POST https://example.amazonaws.com/?Param1=value1`,
 
 ...with no payload, and assuming the date is 20150830T123600Z, the resulting Authorization header will have the value:
 
@@ -170,7 +179,7 @@ Example:
         <Property name="output">my_context_var</Property>
     </Properties>
     <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-    <ResourceURL>java://apigee-callout-awsv4sig-20210608.jar</ResourceURL>
+    <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -230,7 +239,7 @@ To build: `mvn clean package`
 The Jar source code includes tests.
 
 If you edit policies offline, copy [the jar file for the custom
-policy](callout/target/apigee-callout-awsv4sig-20210608.jar) to your
+policy](callout/target/apigee-callout-awsv4sig-20210609.jar) to your
 apiproxy/resources/java directory.  If you don't edit proxy bundles offline,
 upload that jar file into the API Proxy via the Apigee API Proxy Editor .
 

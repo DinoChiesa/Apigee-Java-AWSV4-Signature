@@ -80,6 +80,10 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
     return sourceMessage;
   }
 
+  protected boolean wantInsureTrailingSlashOnPath(MessageContext msgCtxt) throws Exception {
+    return _getBooleanProperty(msgCtxt, "insure-trailing-slash", false);
+  }
+
   protected boolean wantSignedContentSha256(MessageContext msgCtxt) throws Exception {
     return _getBooleanProperty(msgCtxt, "sign-content-sha256", false);
   }
@@ -164,14 +168,6 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
     return s.trim().replaceAll("( )+", " ");
   }
 
-  public static String normalizePath(String s) {
-    String normalizedPath = Paths.get("/", s).normalize().toString();
-    if (normalizedPath.length() > 1 && s.endsWith("/")) {
-      normalizedPath += "/";
-    }
-    return normalizedPath;
-  }
-
   public class SignConfiguration {
     Message sourceMessage;
     String endpoint;
@@ -186,6 +182,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
     String secret;
     String key;
     boolean wantSignedContentSha256;
+    boolean insureTrailingSlashOnPath;
     boolean debug;
     String scope;
     String stringToSign;
@@ -216,10 +213,11 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
 
       endpoint = getEndpoint(msgCtxt);
       host = endpoint.substring(8);
-      // TODO: validate the endpoint
+      // TODO: validate the endpoint. Does it look like an https url?
       region = getRegion(msgCtxt);
       service = getService(msgCtxt);
       secret = getSecret(msgCtxt);
+      insureTrailingSlashOnPath = wantInsureTrailingSlashOnPath(msgCtxt);
       key = getKey(msgCtxt);
 
       sourceMessage = getSource(msgCtxt);
@@ -352,6 +350,17 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
       }
     }
 
+    private String normalizePath(String s) {
+      String normalizedPath = Paths.get("/", s).normalize().toString();
+      if (normalizedPath.length() > 1 && s.endsWith("/")) {
+        normalizedPath += "/";
+      }
+      else if (insureTrailingSlashOnPath) {
+        normalizedPath += "/";
+      }
+      return normalizedPath;
+    }
+
     public Canonicalized getCanonicalRequest() {
       // (1) https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
       List<String> canonicalRequestLines = new ArrayList<>();
@@ -393,7 +402,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
       debug = getDebug(msgCtxt);
       SignConfiguration signConfig = new SignConfiguration(msgCtxt, debug);
       final Canonicalized canonicalized = signConfig.getCanonicalRequest();
-      msgCtxt.setVariable(varName("creq"), canonicalized.request);
+      msgCtxt.setVariable(varName("creq"), canonicalized.request.replaceAll("\n","↵"));
 
       final String stringToSign = signConfig.computeStringToSign(canonicalized);
       msgCtxt.setVariable(varName("sts"), stringToSign.replaceAll("\n","↵"));

@@ -1,4 +1,4 @@
-<JavaCallout name='JC-AWSSignV4-Contrived'>
+<JavaCallout name='JC-AWSSignV4-Contrived-1'>
     <Properties>
         <Property name="service">s3</Property>
         <Property name="endpoint">https://my-bucket-name.s3.amazonaws.com</Property>
@@ -10,5 +10,5 @@
         <Property name="debug">true</Property>
     </Properties>
     <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-    <ResourceURL>java://apigee-callout-awsv4sig-20210608.jar</ResourceURL>
+    <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
 </JavaCallout>

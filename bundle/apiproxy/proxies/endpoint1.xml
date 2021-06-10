@@ -47,7 +47,7 @@
           <Name>AM-ContrivedData-1</Name>
         </Step>
         <Step>
-          <Name>JC-AWSSignV4-Contrived</Name>
+          <Name>JC-AWSSignV4-Contrived-1</Name>
         </Step>
       </Request>
       <Response>
@@ -74,6 +74,23 @@
         </Step>
       </Response>
       <Condition>(proxy.pathsuffix MatchesPath "/post-vanilla-empty-query-value") and (request.verb = "GET")</Condition>
+    </Flow>
+
+    <Flow name="flow3">
+      <Request>
+        <Step>
+          <Name>AM-ContrivedData-3</Name>
+        </Step>
+        <Step>
+          <Name>JC-AWSSignV4-Contrived-3</Name>
+        </Step>
+      </Request>
+      <Response>
+        <Step>
+          <Name>AM-Response</Name>
+        </Step>
+      </Response>
+      <Condition>(proxy.pathsuffix MatchesPath "/t3") and (request.verb = "GET")</Condition>
     </Flow>
 
     <Flow name="unknown request">
