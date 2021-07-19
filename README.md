@@ -55,7 +55,9 @@ the policy sets the appropriate headers in the AWS request:
 - x-amz-date - with the appropriate date representing "now"
 - (optionally) x-amz-content-sha256
 
-In the latter case, the policy emits the presigned URL into a context variable that you specify.
+> **NOTE**: the callout does not send the request. It merely sets the headers. Send the request with ServiceCallout!
+
+In the latter case, the policy emits the presigned URL into a context variable that you specify. Once again, the callout does not invoke that URL. It merely constructs it.
 
 ## Policy Configuration
 
