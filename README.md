@@ -20,6 +20,11 @@ here](https://github.com/micovery/apigee-java-callout-aws-signature-v4). The mai
 
 * this callout here relies solely on the JRE to compute the required HMACs. There are no additional external dependencies. For that reason it may be lighter weight.
 
+Please Note: The callout simply performs the calculations to produce either a
+signed URL or a set of headers.  In no case does the callout send out a request
+to AWS.  In the case in which you are using the callout to generate headers for
+a request to be sent to AWS, the callout only sets headers on a message.  _You
+must use ServiceCallout or a target request to actually send the message._
 
 ## License
 
