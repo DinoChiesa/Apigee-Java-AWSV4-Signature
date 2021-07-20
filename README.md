@@ -3,12 +3,15 @@
 This directory contains the Java source code for a Java callout for Apigee
 that constructs an AWS V4 Signature. The signature can be used in one of two forms:
 
-- to generate a set of headers (Authorization, x-amz-date, and possibly others) on an existing Message in Apigee
+- to generate a set of headers (Authorization, x-amz-date, and possibly
+  others) on an existing Message in Apigee
+
 - to generate a "presigned URL".
 
-You can use the former to connect directly to an AWS resource from within
-Apigee. You can use the latter to generate a signed URL that you can send from Apigee back to a
-client (possibly via 302 redirect), which allows the client to connect directly to the resource.
+You can use the former to connect directly to an AWS resource from
+within Apigee. You can use the latter to generate a signed URL that you
+can send from Apigee back to a client (possibly via 302 redirect), which
+allows the client to connect directly to the resource.
 
 This Java callout has no dependencies on the AWS SDK; instead it
 follows [the described signature process in the AWS Documentation](https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html).
@@ -16,9 +19,13 @@ follows [the described signature process in the AWS Documentation](https://docs.
 There is a similar callout [available from micovery
 here](https://github.com/micovery/apigee-java-callout-aws-signature-v4). The main difference between that one and this one:
 
-* the microvery callout relies on the AWS Java SDK to compute the signatures. This is a larger JAR and it may pull in some other dependencies. Using this JAR may produce a "heavier" API proxy.
+* the microvery callout relies on the AWS Java SDK to compute the
+  signatures. This is a larger JAR and it may pull in some other
+  dependencies. Using this JAR may produce a "heavier" API proxy.
 
-* this callout here relies solely on the JRE to compute the required HMACs. There are no additional external dependencies. For that reason it may be lighter weight.
+* this callout here relies solely on the JRE to compute the required
+  HMACs. There are no additional external dependencies. For that reason
+  it may be lighter weight.
 
 Please Note: The callout simply performs the calculations to produce either a
 signed URL or a set of headers.  In no case does the callout send out a request
@@ -33,19 +40,23 @@ Apache Source License v2.0. For information see the [LICENSE](LICENSE) file.
 
 ## Disclaimer
 
-This example is not an official Google product, nor is it part of an official Google product.
+This example is not an official Google product, nor is it part of an
+official Google product.
 
 ## Using the Custom Policy
 
 
 You do not need to build the Jar in order to use the custom policy.
 
-When you use the policy to generate a signed request, AWS will accept the authenticated request.
+When you use the policy to generate a signed request, AWS will accept
+the authenticated request.
 
 
 There are two ways to use the policy:
 
-1. to generate a set of headers (Authorization, x-amz-date, and possibly others) on an existing Message in Apigee
+1. to generate a set of headers (Authorization, x-amz-date, and possibly
+   others) on an existing Message in Apigee
+
 2. to generate a "presigned URL".
 
 In the first case,
@@ -57,15 +68,19 @@ the policy sets the appropriate headers in the AWS request:
 
 > **NOTE**: the callout does not send the request. It merely sets the headers. Send the request with ServiceCallout!
 
-In the latter case, the policy emits the presigned URL into a context variable that you specify. Once again, the callout does not invoke that URL. It merely constructs it.
+In the latter case, the policy emits the presigned URL into a context
+variable that you specify. Once again, the callout does not invoke that
+URL. It merely constructs it.
 
 ## Policy Configuration
 
-In all cases, you must configure the policy with your AWS Key and Secret, as well as the region, the service name, and the endpoint.
+In all cases, you must configure the policy with your AWS Key and
+Secret, as well as the region, the service name, and the endpoint.
 
 ## Policy Configuration - Signed Headers
 
-To use signed headers, supply a `source` message.  The policy will  compute the headers and apply them to the specified message.
+To use signed headers, supply a `source` message.  The policy will
+compute the headers and apply them to the specified message.
 
 Example:
 
@@ -160,9 +175,50 @@ include:
 A view of these in the Trace UI:
 ![screenshot](./images/Trace-UI-Variables-20210608-065012.png)
 
+
+### This callout does not send the request
+
+This callout does not send out the request. Insted you should use
+ServiceCallout for that purpose. In the ServiceCallout configuration,
+refer to the same message you used as `source` in the Java callout.
+
+For example, if you had this in your Java callout:
+```
+        <Property name="source">outgoingAwsMessage</Property>
+```
+
+Then your ServiceCallout should look something like this:
+```xml
+<ServiceCallout name='##'>
+  <Request clearPayload="false" variable="outgoingAwsMessage">
+    <Set>
+     <Headers>
+       <Header name='content-type'>application/octet-stream</Header>
+       <!--
+       The following headers were already set by the Java callout:
+         x-amz-date, host, authorization, and x-amz-content-sha256
+       -->
+     </Headers>
+     <Payload>{whatever}</Payload>
+     <Verb>PUT</Verb>
+    </Set>
+  </Request>
+  <Response>uploadResponse</Response>
+  <HTTPTargetConnection>
+    <SSLInfo>
+      <Enabled>true</Enabled>
+      <IgnoreValidationErrors>false</IgnoreValidationErrors>
+      <TrustStore>mytruststore</TrustStore>
+    </SSLInfo>
+    <URL>https://{endpoint}/{bucket}/{filename}</URL>
+  </HTTPTargetConnection>
+</ServiceCallout>
+```
+
 ## Policy Configuration - Pre-Signed URL
 
-To generate a pre-signed URL, do not specify a `source` message. Instead, specify these properties:
+To generate a pre-signed URL, do not specify a `source`
+message. Instead, specify these properties:
 * request-verb
 * request-path
 * request-expiry
