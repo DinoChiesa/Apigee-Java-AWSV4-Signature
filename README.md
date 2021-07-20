@@ -178,7 +178,7 @@ A view of these in the Trace UI:
 
 ### This callout does not send the request
 
-This callout does not send out the request. Insted you should use
+This callout does not send out the request. Instead you should use
 ServiceCallout for that purpose. In the ServiceCallout configuration,
 refer to the same message you used as `source` in the Java callout.
 
@@ -189,7 +189,8 @@ For example, if you had this in your Java callout:
 
 Then your ServiceCallout should look something like this:
 ```xml
-<ServiceCallout name='##'>
+<ServiceCallout name='SC-PUT-to-S3'>
+  <!-- specify the previously-created message here -->
   <Request clearPayload="false" variable="outgoingAwsMessage">
     <Set>
      <Headers>
