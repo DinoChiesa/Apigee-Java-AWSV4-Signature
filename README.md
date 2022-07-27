@@ -45,7 +45,6 @@ official Google product.
 
 ## Using the Custom Policy
 
-
 You do not need to build the Jar in order to use the custom policy.
 
 When you use the policy to generate a signed request, AWS will accept
@@ -72,7 +71,74 @@ In the latter case, the policy emits the presigned URL into a context
 variable that you specify. Once again, the callout does not invoke that
 URL. It merely constructs it.
 
-## Policy Configuration
+## Using with ServiceCallout
+
+If you use this callout with ServiceCallout, your flow will look something like this:
+```
+    <Step>
+      <!-- create the message and set the payload -->
+      <Name>AM-Construct-Outgoing-AWS-Message</Name>
+    </Step>
+    <Step>
+      <!-- insert the headers required for AWS v4 signature -->
+      <Name>JC-AWSSignV4-Outgoing-AWS-Message</Name>
+    </Step>
+    <Step>
+      <!-- send the message with the computed headers -->
+      <Name>SC-Send-AWS-Message</Name>
+    </Step>
+```
+
+The AssignMessage policy will be like this:
+```
+<AssignMessage name='AM-Construct-Outgoing-AWS-Message'>
+  <AssignTo createNew='true' type='request'>outgoingAwsMessage</AssignTo>
+  <Set>
+    <Headers>
+      <!-- per https://docs.aws.amazon.com/kms/latest/APIReference/kms-api-reference.pdf -->
+      <Header name="X-Amz-Target">TrentService.Sign</Header>
+    </Headers>
+    <Verb>POST</Verb>
+    <Payload contentType="application/x-amz-json-1.1">{
+      "KeyId": "23c29362-cd00-4c9c-803f-c1ee961be6c3"
+      "Message": "ZXlKaGJHY2lPaUFpVWxNeU5UWWlMQ0FpZEhsd0lqb2dJa3BYVkNKOS5leUpwWVhRaU9pQXhOalU0T0RJNE9EZ3dMQ0FpWlhod0lqb2dNVFkxT0Rnek1qUTRNQ3dnSW5OMVlpSTZJQ0l3YjJFeE9UbGxhR3Q0YzJRd1MxcEVhVEJvT0NJc0lDSnBjM01pT2lBaU1HOWhNVGs1WldocmVITmtNRFEZ2lMQ0FpWVhWa0lqb2dJbWgwZEhCek9pOHZiVzFqTG05cmRHRndjbVYyYVdWM0xtTnZiUzl2WVhWMGFESXZkakV2ZEc5clpXNGlMQ0FpYW5ScElqb2dJakJtWVdaaVltUTRMV05qTW1FdE5EbGlaaTFpT1ROakxURXdNMkZqT0dJM1pHTTROeUo5",
+      "SigningAlgorithm": "RSASSA_PKCS1_V1_5_SHA_256"
+  }</Payload>
+  </Set>
+</AssignMessage>
+```
+
+The configuration for this custom Java policy might look like this:
+```
+<JavaCallout name="JC-AWSSignV4">
+    <Properties>
+        <Property name="service">kms</Property>
+        <Property name="endpoint">https://kms.us-east-1.amazonaws.com</Property>
+        <Property name="region">us-east-1</Property>
+        <Property name="key">{private.aws-key}</Property>
+        <Property name="secret">{private.aws-secret-key}</Property>
+        <Property name="source">outgoingAwsMessage</Property>
+        <Property name="sign-content-sha256">true</Property>
+    </Properties>
+    <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
+    <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
+</JavaCallout>
+```
+
+And the ServiceCallout policy will look like this:
+```
+<ServiceCallout name="SC-Send-AWS-Message">
+    <Request variable='outgoingAwsMessage'/>
+    <Response>awsresponse</Response>
+    <HTTPTargetConnection>
+        <URL>https://kms.us-east-1.amazonaws.com?Action=Sign</URL>
+    </HTTPTargetConnection>
+</ServiceCallout>
+```
+
+
+
+## Details on Policy Configuration
 
 In all cases, you must configure the policy with your AWS Key and
 Secret, as well as the region, the service name, and the endpoint.
@@ -102,7 +168,7 @@ Example:
 
 The properties should be self-explanatory.
 
-The `source` should be a Message that you have previously created with `AssignMessage`.
+The `source` should be a Message that you have previously created with `AssignMessage`. 
 
 The policy will inject headers: `x-amz-date` and `authorization`, and optionally `host`.
 
@@ -119,8 +185,12 @@ There are optional properties:
   `/v1/LookupUser` as the path.  If you set the `insure-trailing-slash` to true,
   then the canonical request will use `/v1/LookupUser/` as the path.
 
+The policy then creates an AWS v4 Signature resulting in an Authorization
+header. The string-to-sign will include all of the pre-existing headers on 
+the specified source message, along with the newly injected `x-amz-date` and 
+`host` and `x-amz-content-sha256` headers.  
 
-For a request like: `POST https://example.amazonaws.com/?Param1=value1`,
+As an example, for a request like: `POST https://example.amazonaws.com/?Param1=value1`,
 
 ...with no payload, and assuming the date is 20150830T123600Z, the resulting Authorization header will have the value:
 
@@ -135,7 +205,11 @@ Signature=28038455d6de14eafc1f9222cf5aa6f1a96197d7deb8263271d420d138af7f11
 
 This is from a test case provided by Amazon.
 
-### Note about the Headers
+For a request with a body, then the resulting Authorization header will likely list additional 
+headers like `content-type` and `x-amz-content-sha256`. 
+
+
+### Note about the Headers that get set
 
 The policy will set headers,  including `x-amz-date`, `host`, `authorization`, and
 optionally `x-amz-content-sha256`, in the source message.
@@ -192,17 +266,11 @@ Then your ServiceCallout should look something like this:
 <ServiceCallout name='SC-PUT-to-S3'>
   <!-- specify the previously-created message here -->
   <Request clearPayload="false" variable="outgoingAwsMessage">
-    <Set>
-     <Headers>
-       <Header name='content-type'>application/octet-stream</Header>
-       <!--
+     <!--
+       No need to set headers now, after signature calculation. 
        The following headers were already set by the Java callout:
          x-amz-date, host, authorization, and x-amz-content-sha256
-       -->
-     </Headers>
-     <Payload>{whatever}</Payload>
-     <Verb>PUT</Verb>
-    </Set>
+     -->
   </Request>
   <Response>uploadResponse</Response>
   <HTTPTargetConnection>
@@ -215,6 +283,10 @@ Then your ServiceCallout should look something like this:
   </HTTPTargetConnection>
 </ServiceCallout>
 ```
+
+This assumes that prior to the Java callout, you used an AssignMessage to create the 
+message named `outgoingAwsMessage` and set the verb, payload, and content-type on that message. 
+
 
 ## Policy Configuration - Pre-Signed URL
 
@@ -231,19 +303,19 @@ Example:
 
 ```
 <JavaCallout name="JC-AWSSignV4-PresignedUrl">
-    <Properties>
-        <Property name="service">s3</Property>
-        <Property name="endpoint">https://my-bucket-name.s3.amazonaws.com</Property>
-        <Property name="region">us-west-1</Property>
-        <Property name="key">{private.aws-key}</Property>
-        <Property name="secret">{private.aws-secret-key}</Property>
-        <Property name="request-verb">GET</Property>
-        <Property name="request-path">/path-to-object.txt</Property>
-        <Property name="request-expiry">86400</Property> <!-- in seconds -->
-        <Property name="output">my_context_var</Property>
-    </Properties>
-    <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-    <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
+  <Properties>
+    <Property name="service">s3</Property>
+    <Property name="endpoint">https://my-bucket-name.s3.amazonaws.com</Property>
+    <Property name="region">us-west-1</Property>
+    <Property name="key">{private.aws-key}</Property>
+    <Property name="secret">{private.aws-secret-key}</Property>
+    <Property name="request-verb">GET</Property>
+    <Property name="request-path">/path-to-object.txt</Property>
+    <Property name="request-expiry">86400</Property> <!-- in seconds -->
+    <Property name="output">my_context_var</Property>
+  </Properties>
+  <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
+  <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
 </JavaCallout>
 ```
 
