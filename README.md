@@ -69,7 +69,79 @@ the policy sets the appropriate headers in the AWS request:
 
 In the latter case, the policy emits the presigned URL into a context
 variable that you specify. Once again, the callout does not invoke that
-URL. It merely constructs it.
+URL. It merely constructs it. You need to configure the proxy to send that
+URL to something that will invoke it. 
+
+## Details on Policy Configuration
+
+In all cases, you must configure the policy with your AWS Key and
+Secret, as well as the region, the service name, and the endpoint.
+
+## Configuration Case 1 - for Signed Headers
+
+To use signed headers, supply a `source` message.  The policy will
+compute the headers and apply them to the specified message.
+
+Example:
+
+```
+<JavaCallout name="JC-AWSSignV4">
+    <Properties>
+        <Property name="service">s3</Property>
+        <Property name="endpoint">https://my-bucket-name.s3.amazonaws.com</Property>
+        <Property name="region">us-west-1</Property>
+        <Property name="key">{private.aws-key}</Property>
+        <Property name="secret">{private.aws-secret-key}</Property>
+        <Property name="source">outgoingAwsMessage</Property>
+        <Property name="sign-content-sha256">true</Property> <!-- optional -->
+    </Properties>
+    <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
+    <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
+</JavaCallout>
+```
+
+The properties should be self-explanatory.
+
+The `source` should be a Message that you have previously created with `AssignMessage`.
+
+The policy will inject headers: `x-amz-date` and `authorization`, and optionally `host`.
+
+There are optional properties:
+
+* `sign-content-sha256`, when true, tells the policy to add a header
+  `x-amz-content-sha256` which holds the SHA256 of the content (payload) for the
+  message. The policy also includes that header in the signed headers. Not all
+  AWS endpoints require this.
+
+* `insure-trailing-slash`, when true, tells the policy to always insure that the
+  URL Path in the canonical request includes a trailing slash. Some endpoints
+  apparently require this. For example, suppose your message has
+  `/v1/LookupUser` as the path.  If you set the `insure-trailing-slash` to true,
+  then the canonical request will use `/v1/LookupUser/` as the path.
+
+The policy then creates an AWS v4 Signature resulting in an Authorization
+header. The string-to-sign will include all of the pre-existing headers on
+the specified source message, along with the newly injected `x-amz-date` and
+`host` and `x-amz-content-sha256` headers.
+
+As an example, for a request like: `POST https://example.amazonaws.com/?Param1=value1`,
+
+...with no payload, and assuming the date is 20150830T123600Z, the resulting Authorization header will have the value:
+
+```
+AWS4-HMAC-SHA256
+Credential=AKIDEXAMPLE/20150830/us-east-1/service/aws4_request,
+SignedHeaders=host;x-amz-date,
+Signature=28038455d6de14eafc1f9222cf5aa6f1a96197d7deb8263271d420d138af7f11
+```
+
+(All on one line)
+
+This is from a test case provided by Amazon.
+
+For a request with a body, then the resulting Authorization header will likely list additional
+headers like `content-type` and `x-amz-content-sha256`.
+
 
 ## Using with ServiceCallout
 
@@ -137,78 +209,6 @@ And the ServiceCallout policy will look like this:
 ```
 
 
-
-## Details on Policy Configuration
-
-In all cases, you must configure the policy with your AWS Key and
-Secret, as well as the region, the service name, and the endpoint.
-
-## Policy Configuration - Signed Headers
-
-To use signed headers, supply a `source` message.  The policy will
-compute the headers and apply them to the specified message.
-
-Example:
-
-```
-<JavaCallout name="JC-AWSSignV4">
-    <Properties>
-        <Property name="service">s3</Property>
-        <Property name="endpoint">https://my-bucket-name.s3.amazonaws.com</Property>
-        <Property name="region">us-west-1</Property>
-        <Property name="key">{private.aws-key}</Property>
-        <Property name="secret">{private.aws-secret-key}</Property>
-        <Property name="source">outgoingAwsMessage</Property>
-        <Property name="sign-content-sha256">true</Property> <!-- optional -->
-    </Properties>
-    <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-    <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
-</JavaCallout>
-```
-
-The properties should be self-explanatory.
-
-The `source` should be a Message that you have previously created with `AssignMessage`. 
-
-The policy will inject headers: `x-amz-date` and `authorization`, and optionally `host`.
-
-There are optional properties:
-
-* `sign-content-sha256`, when true, tells the policy to add a header
-  `x-amz-content-sha256` which holds the SHA256 of the content (payload) for the
-  message. The policy also includes that header in the signed headers. Not all
-  AWS endpoints require this.
-
-* `insure-trailing-slash`, when true, tells the policy to always insure that the
-  URL Path in the canonical request includes a trailing slash. Some endpoints
-  apparently require this. For example, suppose your message has
-  `/v1/LookupUser` as the path.  If you set the `insure-trailing-slash` to true,
-  then the canonical request will use `/v1/LookupUser/` as the path.
-
-The policy then creates an AWS v4 Signature resulting in an Authorization
-header. The string-to-sign will include all of the pre-existing headers on 
-the specified source message, along with the newly injected `x-amz-date` and 
-`host` and `x-amz-content-sha256` headers.  
-
-As an example, for a request like: `POST https://example.amazonaws.com/?Param1=value1`,
-
-...with no payload, and assuming the date is 20150830T123600Z, the resulting Authorization header will have the value:
-
-```
-AWS4-HMAC-SHA256
-Credential=AKIDEXAMPLE/20150830/us-east-1/service/aws4_request,
-SignedHeaders=host;x-amz-date,
-Signature=28038455d6de14eafc1f9222cf5aa6f1a96197d7deb8263271d420d138af7f11
-```
-
-(All on one line)
-
-This is from a test case provided by Amazon.
-
-For a request with a body, then the resulting Authorization header will likely list additional 
-headers like `content-type` and `x-amz-content-sha256`. 
-
-
 ### Note about the Headers that get set
 
 The policy will set headers,  including `x-amz-date`, `host`, `authorization`, and
@@ -267,7 +267,7 @@ Then your ServiceCallout should look something like this:
   <!-- specify the previously-created message here -->
   <Request clearPayload="false" variable="outgoingAwsMessage">
      <!--
-       No need to set headers now, after signature calculation. 
+       No need to set headers now, after signature calculation.
        The following headers were already set by the Java callout:
          x-amz-date, host, authorization, and x-amz-content-sha256
      -->
@@ -284,14 +284,15 @@ Then your ServiceCallout should look something like this:
 </ServiceCallout>
 ```
 
-This assumes that prior to the Java callout, you used an AssignMessage to create the 
-message named `outgoingAwsMessage` and set the verb, payload, and content-type on that message. 
+This assumes that prior to the Java callout, you used an AssignMessage to create the
+message named `outgoingAwsMessage` and set the verb, payload, and content-type on that message.
 
 
-## Policy Configuration - Pre-Signed URL
+## Configuration Case 2 - for Pre-Signed URL
 
 To generate a pre-signed URL, do not specify a `source`
 message. Instead, specify these properties:
+
 * request-verb
 * request-path
 * request-expiry
@@ -330,6 +331,7 @@ Then, enable trace, and invoke it with curl:
 ```
 # For Apigee Edge
 endpoint=https://${ORG}-${ENV}.apigee.net
+
 # For Apigee X
 endpoint=https://your-endpoint-will-vary.net
 curl -i $endpoint/awsv4test/t1
@@ -354,7 +356,7 @@ Signature=28038455d6de14eafc1f9222cf5aa6f1a96197d7deb8263271d420d138af7f11
 
 ## No Dependencies
 
-There are no dependencies, other than the Java runtime.
+There are no dependencies of this callout jar, other than the Java runtime.
 
 ## Building the Jar
 
@@ -387,5 +389,5 @@ upload that jar file into the API Proxy via the Apigee API Proxy Editor .
 
 ## Author
 
-Dino Chiesa
+Dino Chiesa   
 godino@google.com
