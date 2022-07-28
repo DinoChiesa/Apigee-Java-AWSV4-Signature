@@ -3,6 +3,12 @@ Thursday, 25 February 2021, 21:07
 I downloaded this from the AWS SDK test suite.
 https://docs.aws.amazon.com/general/latest/gr/samples/aws-sig-v4-test-suite.zip
 
+For all of these test cases,
+
+  accessKeyId = "AKIDEXAMPLE"
+  secretAccessKey = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+
+
 Needed to change data for one of the tests:
 post-x-www-form-urlencoded
 

@@ -86,17 +86,17 @@ Example:
 
 ```
 <JavaCallout name="JC-AWSSignV4">
-    <Properties>
-        <Property name="service">s3</Property>
-        <Property name="endpoint">https://my-bucket-name.s3.amazonaws.com</Property>
-        <Property name="region">us-west-1</Property>
-        <Property name="key">{private.aws-key}</Property>
-        <Property name="secret">{private.aws-secret-key}</Property>
-        <Property name="source">outgoingAwsMessage</Property>
-        <Property name="sign-content-sha256">true</Property> <!-- optional -->
-    </Properties>
-    <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-    <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
+  <Properties>
+    <Property name="service">s3</Property>
+    <Property name="endpoint">https://my-bucket-name.s3.amazonaws.com</Property>
+    <Property name="region">us-west-1</Property>
+    <Property name="key">{private.aws-key}</Property>
+    <Property name="secret">{private.aws-secret-key}</Property>
+    <Property name="source">outgoingAwsMessage</Property>
+    <Property name="sign-content-sha256">true</Property> <!-- optional -->
+  </Properties>
+  <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
+  <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -170,10 +170,14 @@ The AssignMessage policy will be like this:
       <!-- per https://docs.aws.amazon.com/kms/latest/APIReference/kms-api-reference.pdf -->
       <Header name="X-Amz-Target">TrentService.Sign</Header>
     </Headers>
+    <QueryParams>
+      <QueryParam name="Version">2014-11-01</QueryParam>
+      <QueryParam name="Action">Sign</QueryParam>
+    </QueryParams>
     <Verb>POST</Verb>
     <Payload contentType="application/x-amz-json-1.1">{
       "KeyId": "23c29362-cd00-4c9c-803f-c1ee961be6c3"
-      "Message": "ZXlKaGJHY2lPaUFpVWxNeU5UWWlMQ0FpZEhsd0lqb2dJa3BYVkNKOS5leUpwWVhRaU9pQXhOalU0T0RJNE9EZ3dMQ0FpWlhod0lqb2dNVFkxT0Rnek1qUTRNQ3dnSW5OMVlpSTZJQ0l3YjJFeE9UbGxhR3Q0YzJRd1MxcEVhVEJvT0NJc0lDSnBjM01pT2lBaU1HOWhNVGs1WldocmVITmtNRFEZ2lMQ0FpWVhWa0lqb2dJbWgwZEhCek9pOHZiVzFqTG05cmRHRndjbVYyYVdWM0xtTnZiUzl2WVhWMGFESXZkakV2ZEc5clpXNGlMQ0FpYW5ScElqb2dJakJtWVdaaVltUTRMV05qTW1FdE5EbGlaaTFpT1ROakxURXdNMkZqT0dJM1pHTTROeUo5",
+      "Message": "ZXlKaGJH....",
       "SigningAlgorithm": "RSASSA_PKCS1_V1_5_SHA_256"
   }</Payload>
   </Set>
@@ -183,28 +187,29 @@ The AssignMessage policy will be like this:
 The configuration for this custom Java policy might look like this:
 ```
 <JavaCallout name="JC-AWSSignV4">
-    <Properties>
-        <Property name="service">kms</Property>
-        <Property name="endpoint">https://kms.us-east-1.amazonaws.com</Property>
-        <Property name="region">us-east-1</Property>
-        <Property name="key">{private.aws-key}</Property>
-        <Property name="secret">{private.aws-secret-key}</Property>
-        <Property name="source">outgoingAwsMessage</Property>
-        <Property name="sign-content-sha256">true</Property>
-    </Properties>
-    <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-    <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
+  <Properties>
+    <Property name="service">kms</Property>
+    <Property name="endpoint">https://kms.us-east-1.amazonaws.com</Property>
+    <Property name="region">us-east-1</Property>
+    <Property name="key">{private.aws-key}</Property>
+    <Property name="secret">{private.aws-secret-key}</Property>
+    <Property name="source">outgoingAwsMessage</Property>
+    <Property name="sign-content-sha256">true</Property>
+  </Properties>
+  <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
+  <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
 </JavaCallout>
 ```
 
 And the ServiceCallout policy will look like this:
 ```
 <ServiceCallout name="SC-Send-AWS-Message">
-    <Request variable='outgoingAwsMessage'/>
-    <Response>awsresponse</Response>
-    <HTTPTargetConnection>
-        <URL>https://kms.us-east-1.amazonaws.com?Action=Sign</URL>
-    </HTTPTargetConnection>
+  <Request variable='outgoingAwsMessage'/>
+  <Response>awsresponse</Response>
+  <HTTPTargetConnection>
+    <!-- do not include query params here -->
+    <URL>https://kms.us-east-1.amazonaws.com</URL>
+  </HTTPTargetConnection>
 </ServiceCallout>
 ```
 
