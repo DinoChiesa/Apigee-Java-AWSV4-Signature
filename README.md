@@ -35,7 +35,7 @@ must use ServiceCallout or a target request to actually send the message._
 
 ## License
 
-This code is Copyright (c) 2020-2021 Google LLC, and is released under the
+This code is Copyright (c) 2020-2022 Google LLC, and is released under the
 Apache Source License v2.0. For information see the [LICENSE](LICENSE) file.
 
 ## Disclaimer
