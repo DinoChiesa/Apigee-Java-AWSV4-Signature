@@ -1,7 +1,12 @@
 # AWS V4 Signature callout
 
-This directory contains the Java source code for a Java callout for Apigee
-that constructs an AWS V4 Signature. The signature can be used in one of two forms:
+This directory contains the Java source code for a Java callout for Apigee that
+constructs an AWS V4 Signature. The AWS v4 Signature can be used to authenticate
+calls into many different AWS resources: Ec2, S3, Lambda, SNS, SQS, and
+others. It's the same signature pattern for all of these services. This callout
+produces a signature that works with any of these AWS services.
+
+The signature can be used in one of two forms:
 
 - to generate a set of headers (Authorization, x-amz-date, and possibly
   others) on an existing Message in Apigee
@@ -65,12 +70,12 @@ the policy sets the appropriate headers in the AWS request:
 - x-amz-date - with the appropriate date representing "now"
 - (optionally) x-amz-content-sha256
 
-> **NOTE**: the callout does not send the request. It merely sets the headers. Send the request with ServiceCallout!
+> **NOTE**: the callout does not send the request. It merely sets the headers. Send the request with ServiceCallout! Or via an HTTPTarget.
 
 In the latter case, the policy emits the presigned URL into a context
 variable that you specify. Once again, the callout does not invoke that
 URL. It merely constructs it. You need to configure the proxy to send that
-URL to something that will invoke it. 
+URL to something that will invoke it.
 
 ## Details on Policy Configuration
 
@@ -394,5 +399,5 @@ upload that jar file into the API Proxy via the Apigee API Proxy Editor .
 
 ## Author
 
-Dino Chiesa   
+Dino Chiesa    
 godino@google.com
