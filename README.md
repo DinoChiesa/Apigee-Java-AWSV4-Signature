@@ -2,14 +2,14 @@
 
 This directory contains the Java source code for a Java callout for Apigee that
 constructs an AWS V4 Signature. The AWS v4 Signature can be used to authenticate
-calls into many different AWS resources: Ec2, S3, Lambda, SNS, SQS, and
+calls into many different AWS resources: EC2, S3, Lambda, SNS, SQS, KMS, and
 others. It's the same signature pattern for all of these services. This callout
 produces a signature that works with any of these AWS services.
 
 The signature can be used in one of two forms:
 
 - to generate a set of headers (Authorization, x-amz-date, and possibly
-  others) on an existing Message in Apigee
+  others) on an existing Message in Apigee.
 
 - to generate a "presigned URL".
 
@@ -87,7 +87,7 @@ Secret, as well as the region, the service name, and the endpoint.
 To use signed headers, supply a `source` message.  The policy will
 compute the headers and apply them to the specified message.
 
-Example:
+Example using S3 Storage:
 
 ```
 <JavaCallout name="JC-AWSSignV4">
@@ -148,7 +148,7 @@ For a request with a body, then the resulting Authorization header will likely l
 headers like `content-type` and `x-amz-content-sha256`.
 
 
-## Using with ServiceCallout
+## Calling AWS KMS with ServiceCallout
 
 If you use this callout with ServiceCallout, your flow will look something like this:
 ```
@@ -166,7 +166,8 @@ If you use this callout with ServiceCallout, your flow will look something like 
     </Step>
 ```
 
-The AssignMessage policy will be like this:
+Supposing you want to connect with the KMS within AWS,
+the AssignMessage policy will be like this:
 ```
 <AssignMessage name='AM-Construct-Outgoing-AWS-Message'>
   <AssignTo createNew='true' type='request'>outgoingAwsMessage</AssignTo>
@@ -218,6 +219,45 @@ And the ServiceCallout policy will look like this:
 </ServiceCallout>
 ```
 
+## Using with AWS Lambda
+
+Supposing you want to call AWS Lambda with ServiceCallout, the AssignMessage looks like this:
+
+```xml
+<AssignMessage name='AM-Construct-Outgoing-AWS-Message'>
+  <AssignTo createNew='true' type='request'>outboundLambdaMessage</AssignTo>
+  <Set>
+      <Verb>POST</Verb>
+      <Headers>
+          <Header name="X-Amz-Invocation-Type">RequestResponse</Header>
+      </Headers>
+      <FormParams/>
+      <Payload contentType="application/json">{"name":"foo", "type":"bar"}</Payload>
+      <Path>/2015-03-31/functions/arn:aws:lambda:us-east-1:283052633151:function:serverlessrepo-hello-world-helloworld-1LZWPWEQFFFF/invocations</Path>
+  </Set>
+</AssignMessage>
+```
+
+And the Java Callout configuration would look like this:
+
+```xml
+<JavaCallout async="false" continueOnError="false" enabled="true" name="JC-AWS-Signature-V4">
+  <DisplayName>JC-AWS-Signature-V4</DisplayName>
+  <Properties>
+      <Property name="debug">true</Property>
+      <Property name="service">lambda</Property>
+      <Property name="endpoint">https://lambda.us-east-1.amazonaws.com</Property>
+      <Property name="region">us-east-1</Property>
+      <Property name="key">{private.sec.aws.key}</Property>
+      <Property name="secret">{private.sec.aws.secret}</Property>
+      <Property name="message-variable-ref">outboundLambdaMessage</Property>
+  </Properties>
+  <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
+  <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
+</JavaCallout>
+```
+
+You can of course use this for other AWS services that require AWS v4 signatures.
 
 ### Note about the Headers that get set
 
