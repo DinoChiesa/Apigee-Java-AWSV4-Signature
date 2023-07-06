@@ -33,6 +33,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -196,7 +197,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
       if (dateOverride != null) {
         this.dateTimeStamp = dateOverride;
       } else {
-        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("UTC"));
         this.dateTimeStamp = xAmzDateFormatter.format(now);
       }
       this.dateStamp = this.dateTimeStamp.substring(0, 8);

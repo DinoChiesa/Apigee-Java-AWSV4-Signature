@@ -40,7 +40,7 @@ must use ServiceCallout or a target request to actually send the message._
 
 ## License
 
-This code is Copyright (c) 2020-2022 Google LLC, and is released under the
+This code is Copyright (c) 2020-2023 Google LLC, and is released under the
 Apache Source License v2.0. For information see the [LICENSE](LICENSE) file.
 
 ## Disclaimer
@@ -101,7 +101,7 @@ Example using S3 Storage:
     <Property name="sign-content-sha256">true</Property> <!-- optional -->
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20230705.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -203,7 +203,7 @@ The configuration for this custom Java policy might look like this:
     <Property name="sign-content-sha256">true</Property>
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20230705.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -253,7 +253,7 @@ And the Java Callout configuration would look like this:
       <Property name="message-variable-ref">outboundLambdaMessage</Property>
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20230705.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -366,7 +366,7 @@ Example:
     <Property name="output">my_context_var</Property>
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20210609.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20230705.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -427,7 +427,7 @@ To build: `mvn clean package`
 The Jar source code includes tests.
 
 If you edit policies offline, copy [the jar file for the custom
-policy](callout/target/apigee-callout-awsv4sig-20210609.jar) to your
+policy](callout/target/apigee-callout-awsv4sig-20230705.jar) to your
 apiproxy/resources/java directory.  If you don't edit proxy bundles offline,
 upload that jar file into the API Proxy via the Apigee API Proxy Editor .
 
