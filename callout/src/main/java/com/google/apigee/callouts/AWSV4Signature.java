@@ -3,7 +3,7 @@
 // This is the main callout class for the AES Crypto custom policy for Apigee Edge.
 // For full details see the Readme accompanying this source file.
 //
-// Copyright (c) 2021 Google LLC.
+// Copyright (c) 2021-2024 Google LLC.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -355,8 +355,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
       String normalizedPath = Paths.get("/", s).normalize().toString();
       if (normalizedPath.length() > 1 && s.endsWith("/")) {
         normalizedPath += "/";
-      }
-      else if (insureTrailingSlashOnPath) {
+      } else if (insureTrailingSlashOnPath) {
         normalizedPath += "/";
       }
       return normalizedPath;
@@ -403,10 +402,10 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
       debug = getDebug(msgCtxt);
       SignConfiguration signConfig = new SignConfiguration(msgCtxt, debug);
       final Canonicalized canonicalized = signConfig.getCanonicalRequest();
-      msgCtxt.setVariable(varName("creq"), canonicalized.request.replaceAll("\n","↵"));
+      msgCtxt.setVariable(varName("creq"), canonicalized.request.replaceAll("\n", "↵"));
 
       final String stringToSign = signConfig.computeStringToSign(canonicalized);
-      msgCtxt.setVariable(varName("sts"), stringToSign.replaceAll("\n","↵"));
+      msgCtxt.setVariable(varName("sts"), stringToSign.replaceAll("\n", "↵"));
 
       signConfig.emitOutput(canonicalized);
 

@@ -16,6 +16,7 @@
 package com.google.apigee.callouts;
 
 import com.apigee.flow.message.Message;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -26,19 +27,32 @@ import java.util.stream.Collectors;
 
 public class TestCase implements Comparable {
 
-  public TestCase(String name, Path path) throws java.io.IOException {
-    this._testName = name;
-    this._path = path.toString();
-    this._input = readAll(Paths.get(_path, name + ".req"));
+  private String findFileByExt(String extension) {
+    File[] allFiles = _path.toFile().listFiles(File::isFile);
+    String fname =
+        Arrays.asList(allFiles).stream()
+            .filter(item -> item.getName().endsWith(extension))
+            .findFirst()
+            .get()
+            .getName();
+    return fname;
   }
 
-  static String readAll(Path path) throws java.io.IOException {
+  public TestCase(String name, Path path) throws java.io.IOException {
+    this._testName = name;
+    this._path = path;
+    String fname = findFileByExt(".req");
+    this._input = readAll(Paths.get(_path.toString(), fname));
+  }
+
+  public static String readAll(Path path) throws java.io.IOException {
     return new String(Files.readAllBytes(path));
   }
 
   private String _testName;
   private String _input; // content of request
-  private String _path;
+  //  private String _path;
+  private Path _path;
 
   // getters
   public String getTestName() {
@@ -65,10 +79,8 @@ public class TestCase implements Comparable {
 
     String pathQueryAndProtocol = parts[1].trim();
     parts = pathQueryAndProtocol.split(" ");
-    String pathAndQuery = Arrays.asList(parts)
-      .stream()
-      .limit(parts.length-1)
-      .collect(Collectors.joining(" "));
+    String pathAndQuery =
+        Arrays.asList(parts).stream().limit(parts.length - 1).collect(Collectors.joining(" "));
 
     parts = pathAndQuery.split("\\?", 2);
     message.setVariable("path", parts[0]);
@@ -108,15 +120,15 @@ public class TestCase implements Comparable {
   }
 
   public String stringToSign() throws java.io.IOException {
-    return readAll(Paths.get(_path, _testName + ".sts"));
+    return readAll(Paths.get(_path.toString(), findFileByExt(".sts")));
   }
 
   public String canonicalRequest() throws java.io.IOException {
-    return readAll(Paths.get(_path, _testName + ".creq"));
+    return readAll(Paths.get(_path.toString(), findFileByExt(".creq")));
   }
 
   public String authorization() throws java.io.IOException {
-    String sreq = readAll(Paths.get(_path, _testName + ".sreq"));
+    String sreq = readAll(Paths.get(_path.toString(), findFileByExt(".sreq")));
     String authzLine =
         Arrays.asList(sreq.split("\\n")).stream()
             .filter(s -> s.toLowerCase().startsWith("authorization:"))

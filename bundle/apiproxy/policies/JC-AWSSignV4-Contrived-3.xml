@@ -11,5 +11,5 @@
         <Property name="debug">true</Property>
     </Properties>
     <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-    <ResourceURL>java://apigee-callout-awsv4sig-20230705.jar</ResourceURL>
+    <ResourceURL>java://apigee-callout-awsv4sig-20240408.jar</ResourceURL>
 </JavaCallout>

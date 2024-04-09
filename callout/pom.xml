@@ -4,7 +4,7 @@
 
   <groupId>com.google.apigee</groupId>
   <artifactId>apigee-callout-awsv4sig</artifactId>
-  <version>20230705</version>
+  <version>20240408</version>
   <name>ApigeeAwsV4Sig</name>
   <url>http://maven.apache.org</url>
   <packaging>jar</packaging>
@@ -146,6 +146,19 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <includes>
+            <include>AWSV4Signature_TestsFromSdk.java</include>
+            <include>AWSV4Signature_Tests2.java</include>
+            <include>AWSV4Signature_Tests3.java</include>
+          </includes>
+        </configuration>
       </plugin>
 
       <plugin>
