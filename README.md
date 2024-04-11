@@ -66,7 +66,7 @@ There are two ways to use the policy:
 In the first case,
 the policy sets the appropriate headers in the AWS request:
 - Authorization - with the appropriate signature
-- Host - with the endpoint hostname
+- Host - derived from the hostname specified in the endpoint
 - x-amz-date - with the appropriate date representing "now"
 - (optionally) x-amz-content-sha256
 
@@ -101,28 +101,37 @@ Example using S3 Storage:
     <Property name="sign-content-sha256">true</Property> <!-- optional -->
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20240408.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20240411.jar</ResourceURL>
 </JavaCallout>
 ```
 
 The properties should be self-explanatory.
 
-The `source` should be a Message that you have previously created with `AssignMessage`.
+The `source` should be a Message that you have previously created, or possibly modified, with `AssignMessage`.
 
-The policy will inject headers: `x-amz-date` and `authorization`, and optionally `host`.
+The value of Host that is used in forming the signature is always derived from the
+`endpoint` value.  If the `endpoint` includes a path (anything after the
+hostname), that path is used in forming the signature, instead of the path
+specified in the source message.
+
+The policy will inject the headers `x-amz-date` and `authorization` into the source message.
 
 There are optional properties:
 
-* `sign-content-sha256`, when true, tells the policy to add a header
+* `sign-content-sha256`, a boolean. When true, tells the policy to add a header
   `x-amz-content-sha256` which holds the SHA256 of the content (payload) for the
   message. The policy also includes that header in the signed headers. Not all
   AWS endpoints require this.
 
-* `insure-trailing-slash`, when true, tells the policy to always insure that the
-  URL Path in the canonical request includes a trailing slash. Some endpoints
-  apparently require this. For example, suppose your message has
-  `/v1/LookupUser` as the path.  If you set the `insure-trailing-slash` to true,
-  then the canonical request will use `/v1/LookupUser/` as the path.
+* `insure-trailing-slash`, a boolean. When true, tells the policy to always
+  insure that the URL Path in the canonical request includes a trailing
+  slash. Some endpoints apparently require this. For example, suppose your
+  message has `/v1/LookupUser` as the path.  If you set the
+  `insure-trailing-slash` to true, then the canonical request will use
+  `/v1/LookupUser/` as the path.
+
+* `debug`, a boolean. When true, tells the policy to set diagnostic context variables.
+  See below for a description of how this works.
 
 The policy then creates an AWS v4 Signature resulting in an Authorization
 header. The string-to-sign will include all of the pre-existing headers on
@@ -145,7 +154,71 @@ Signature=28038455d6de14eafc1f9222cf5aa6f1a96197d7deb8263271d420d138af7f11
 This is from a test case provided by Amazon.
 
 For a request with a body, then the resulting Authorization header will likely list additional
-headers like `content-type` and `x-amz-content-sha256`.
+headers like `content-type` and optionally `x-amz-content-sha256`. Like this:
+
+```
+AWS4-HMAC-SHA256
+Credential=AKIDEXAMPLE/20150830/us-east-1/service/aws4_request,
+SignedHeaders=host;content-type;x-amz-date;x-amz-content-sha256,
+Signature=28038455d6de14eafc1f9222cf5aa6f1a96197d7deb8263271d420d138af7f11
+```
+
+
+## Calling AWS with an HTTP Target
+
+If you use this callout with a regular Apigee http target, then your flow will look like this:
+
+```
+    <Step>
+      <!-- adjust the target message -->
+      <Name>AM-Set-Outgoing-AWS-Message</Name>
+    </Step>
+    <Step>
+      <!-- insert the headers required for AWS v4 signature -->
+      <Name>JC-AWSSignV4-Outgoing-AWS-Message</Name>
+    </Step>
+```
+
+Supposing you want to invoke AWS Textract, the AssignMessage policy might look
+like this:
+
+```
+<AssignMessage name='AM-Set-Outgoing-AWS-Message'>
+  <!-- specify an existing message to modify -->
+  <AssignTo>request</AssignTo>
+  <Remove>
+    <Headers>
+      <Header name="authorization"/>
+      <Header name="any-other-headers-you-want-to-remove"/>
+    </Headers>
+  </Remove>
+  <Set>
+    <Headers>
+      <!-- unsure if this is absolutely required -->
+      <Header name="X-Amz-Target">Textract.AnalyzeDocument</Header>
+    </Headers>
+  </Set>
+</AssignMessage>
+```
+
+The configuration for this custom Java policy might look like this:
+```
+<JavaCallout name="JC-AWSSignV4">
+  <Properties>
+    <Property name="source">request</Property>
+    <Property name="service">textract</Property>
+    <Property name="endpoint">https://textract.us-east-1.amazonaws.com</Property>
+    <Property name="region">us-east-1</Property>
+    <Property name="key">{private.aws-key}</Property>
+    <Property name="secret">{private.aws-secret-key}</Property>
+    <Property name="sign-content-sha256">true</Property>
+  </Properties>
+  <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
+  <ResourceURL>java://apigee-callout-awsv4sig-20240411.jar</ResourceURL>
+</JavaCallout>
+```
+
+And then use the normal HTTP Target to specify the AWS endpoint.
 
 
 ## Calling AWS KMS with ServiceCallout
@@ -170,6 +243,7 @@ Supposing you want to connect with the KMS within AWS,
 the AssignMessage policy will be like this:
 ```
 <AssignMessage name='AM-Construct-Outgoing-AWS-Message'>
+  <!-- create a new message -->
   <AssignTo createNew='true' type='request'>outgoingAwsMessage</AssignTo>
   <Set>
     <Headers>
@@ -203,7 +277,7 @@ The configuration for this custom Java policy might look like this:
     <Property name="sign-content-sha256">true</Property>
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20240408.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20240411.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -241,8 +315,7 @@ Supposing you want to call AWS Lambda with ServiceCallout, the AssignMessage loo
 And the Java Callout configuration would look like this:
 
 ```xml
-<JavaCallout async="false" continueOnError="false" enabled="true" name="JC-AWS-Signature-V4">
-  <DisplayName>JC-AWS-Signature-V4</DisplayName>
+<JavaCallout name="JC-AWS-Signature-V4">
   <Properties>
       <Property name="debug">true</Property>
       <Property name="service">lambda</Property>
@@ -253,7 +326,7 @@ And the Java Callout configuration would look like this:
       <Property name="message-variable-ref">outboundLambdaMessage</Property>
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20240408.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20240411.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -263,6 +336,11 @@ You can of course use this for other AWS services that require AWS v4 signatures
 
 The policy will set headers,  including `x-amz-date`, `host`, `authorization`, and
 optionally `x-amz-content-sha256`, in the source message.
+
+* `x-amz-date` gets set to the actual date, formatted appropriately
+* `host` will get the value of the host from the `endpoint`
+* `authorization` gets the authorization header formatted in a way required by the AWS v4 signature spec.
+
 
 If you use Apigee trace, you will not see these values as they are set directly
 on the source message; this is a limitation of Apigee trace. The policy sets
@@ -291,14 +369,17 @@ The policy also sets other context variables, containing intermediate results
 from its operation; this is for diagnostic purposes only. These variables
 include:
 
-| variable       | description |
-| -------------- | ----------- |
-| awsv4sig\_creq | the canonicalized request string |
-| awsv4sig\_sts  | the "string to sign". In place of newlines, this string uses the ↵ character, for diagnostic purposes only. The actual string-to-sign uses newlines. |
+| variable         | description |
+| ---------------- | ----------- |
+| `awsv4sig\_creq` | the canonicalized request string |
+| `awsv4sig\_sts`  | the "string to sign". In place of newlines, this string uses the ↵ character, for diagnostic purposes only. The actual string-to-sign uses newlines. |
 
 A view of these in the Trace UI:
 ![screenshot](./images/Trace-UI-Variables-20210608-065012.png)
 
+The canonicalized request (creq) will use, as the path, the path from the
+endpoint, if the endpoint contains a slash.  If there is no path specified
+there, the path from the `source` message.
 
 ### This callout does not send the request
 
@@ -308,7 +389,7 @@ refer to the same message you used as `source` in the Java callout.
 
 For example, if you had this in your Java callout:
 ```
-        <Property name="source">outgoingAwsMessage</Property>
+      <Property name="source">outgoingAwsMessage</Property>
 ```
 
 Then your ServiceCallout should look something like this:
@@ -343,10 +424,10 @@ message named `outgoingAwsMessage` and set the verb, payload, and content-type o
 To generate a pre-signed URL, do not specify a `source`
 message. Instead, specify these properties:
 
-* request-verb
-* request-path
-* request-expiry
-* output
+* `request-verb`
+* `request-path`
+* `request-expiry`
+* `output`
 
 The policy will compute the pre-signed URL and place it into the context variable you specify with the output property.
 
@@ -366,7 +447,7 @@ Example:
     <Property name="output">my_context_var</Property>
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20240408.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20240411.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -427,14 +508,15 @@ To build: `mvn clean package`
 The Jar source code includes tests.
 
 If you edit policies offline, copy [the jar file for the custom
-policy](callout/target/apigee-callout-awsv4sig-20240408.jar) to your
+policy](callout/target/apigee-callout-awsv4sig-20240411.jar) to your
 apiproxy/resources/java directory.  If you don't edit proxy bundles offline,
 upload that jar file into the API Proxy via the Apigee API Proxy Editor .
 
 ## Bugs
 
 1. There are no end-to-end tests that actually connect with an AWS endpoint.
-   The tests work only on test vectors provided previously by AWS.
+   There are unit tests only; some that use test vectors provided previously by AWS, and
+   also other tests that were developed independently.
 
 
 ## Author

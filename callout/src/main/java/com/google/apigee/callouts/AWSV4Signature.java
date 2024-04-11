@@ -207,13 +207,35 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
       scope = this.dateStamp + "/" + this.region + "/" + this.service + "/aws4_request";
     }
 
+    private List<String> getHeaderValues(String headerName) {
+      return headerName.equals("host")
+          ? Collections.singletonList(this.host)
+          : sourceMessage.getHeaders(headerName);
+    }
+
+    private String determinePath() {
+      String endpointWithoutScheme = endpoint.substring(8);
+      if (endpointWithoutScheme.contains("/")) {
+        return endpointWithoutScheme.substring(endpointWithoutScheme.indexOf("/"));
+      }
+      return sourceMessage.getVariable("path").toString();
+    }
+
+    private String determineHost() {
+      String endpointWithoutScheme = endpoint.substring(8);
+      if (endpointWithoutScheme.contains("/")) {
+        return endpointWithoutScheme.substring(0, endpointWithoutScheme.indexOf("/"));
+      }
+      return endpointWithoutScheme;
+    }
+
     public SignConfiguration(MessageContext msgCtxt, boolean debug) throws Exception {
       wantSignedContentSha256 = false;
       this.debug = debug;
       this.msgCtxt = msgCtxt;
 
       endpoint = getEndpoint(msgCtxt);
-      host = endpoint.substring(8);
+      host = determineHost();
       // TODO: validate the endpoint. Does it look like an https url?
       region = getRegion(msgCtxt);
       service = getService(msgCtxt);
@@ -226,7 +248,8 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
       if (sourceMessage != null) {
         // get configuration from a previously created message
         verb = sourceMessage.getVariable("verb").toString().toUpperCase();
-        path = sourceMessage.getVariable("path").toString();
+        path = determinePath();
+
         applyDate(sourceMessage.getHeader("x-amz-date"));
 
         String content = sourceMessage.getContent();
@@ -241,14 +264,13 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
         List<String> headerList = new ArrayList<String>(sourceMessage.getHeaderNames());
         Collections.sort(headerList);
         for (String headerName : headerList) {
-          List<String> headerValues = sourceMessage.getHeaders(headerName);
+          List<String> headerValues = getHeaderValues(headerName);
+
           String joinedValue =
               headerValues.stream().map(s -> normalizeSpace(s)).collect(Collectors.joining(","));
           headers.put(headerName.toLowerCase(), joinedValue);
         }
-        if (!headers.containsKey("host")) {
-          headers.put("host", host);
-        }
+        headers.put("host", host);
         if (!headers.containsKey("x-amz-date")) {
           headers.put("x-amz-date", dateTimeStamp);
         }

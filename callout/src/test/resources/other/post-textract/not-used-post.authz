@@ -1,0 +1,1 @@
+AWS4-HMAC-SHA256 Credential=AKIATYKL3VV5HR64ZUWM/20240405/us-east-1/textract/aws4_request, SignedHeaders=content-length;content-type;host;x-amz-content-sha256;x-amz-date, Signature=ab878e69a568dcb85515f41bcd9f91ac52ab287e2d3edeb03998b36e718549d7

@@ -1,0 +1,12 @@
+POST
+/
+
+content-length:103801
+content-type:application/x-amz-json-1.1
+host:textract.us-east-1.amazonaws.com
+x-amz-content-sha256:5b925cf734be04ef78ebd078a6d60981875eb0a49caabc980a1c7bc91ec52085
+x-amz-date:20240405T174302Z
+x-amz-target:Textract.AnalyzeDocument
+
+content-length;content-type;host;x-amz-content-sha256;x-amz-date;x-amz-target
+5b925cf734be04ef78ebd078a6d60981875eb0a49caabc980a1c7bc91ec52085
