@@ -101,7 +101,7 @@ Example using S3 Storage:
     <Property name="sign-content-sha256">true</Property> <!-- optional -->
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20240411.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20240424.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -214,7 +214,7 @@ The configuration for this custom Java policy might look like this:
     <Property name="sign-content-sha256">true</Property>
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20240411.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20240424.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -277,7 +277,7 @@ The configuration for this custom Java policy might look like this:
     <Property name="sign-content-sha256">true</Property>
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20240411.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20240424.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -326,7 +326,7 @@ And the Java Callout configuration would look like this:
       <Property name="message-variable-ref">outboundLambdaMessage</Property>
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20240411.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20240424.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -447,7 +447,7 @@ Example:
     <Property name="output">my_context_var</Property>
   </Properties>
   <ClassName>com.google.apigee.callouts.AWSV4Signature</ClassName>
-  <ResourceURL>java://apigee-callout-awsv4sig-20240411.jar</ResourceURL>
+  <ResourceURL>java://apigee-callout-awsv4sig-20240424.jar</ResourceURL>
 </JavaCallout>
 ```
 
@@ -498,17 +498,15 @@ all the configuration options - the policy may be usable for you without modific
 
 If you do wish to build the jar, you can use
 [maven](https://maven.apache.org/download.cgi) to do so. The build requires
-JDK8. Before you run the build the first time, you need to download the Apigee
-Edge dependencies into your local maven repo.
+JDK v8 and maven 3.9.
 
-Preparation, first time only: `./buildsetup.sh`
 
 To build: `mvn clean package`
 
 The Jar source code includes tests.
 
 If you edit policies offline, copy [the jar file for the custom
-policy](callout/target/apigee-callout-awsv4sig-20240411.jar) to your
+policy](callout/target/apigee-callout-awsv4sig-20240424.jar) to your
 apiproxy/resources/java directory.  If you don't edit proxy bundles offline,
 upload that jar file into the API Proxy via the Apigee API Proxy Editor .
 

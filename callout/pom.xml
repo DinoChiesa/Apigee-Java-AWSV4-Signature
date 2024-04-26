@@ -4,7 +4,7 @@
 
   <groupId>com.google.apigee</groupId>
   <artifactId>apigee-callout-awsv4sig</artifactId>
-  <version>20240411</version>
+  <version>20240426</version>
   <name>ApigeeAwsV4Sig</name>
   <url>http://maven.apache.org</url>
   <packaging>jar</packaging>
@@ -22,7 +22,15 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>artifact-registry</id>
+      <url>https://us-maven.pkg.dev/apigee-release/apigee-java-callout-dependencies</url>
+    </repository>
+  </repositories>
+
   <dependencies>
+    <!--
     <dependency>
       <groupId>com.apigee.edge</groupId>
       <artifactId>message-flow</artifactId>
@@ -32,6 +40,21 @@
       <groupId>com.apigee.edge</groupId>
       <artifactId>expressions</artifactId>
       <version>${apigee.expressions.version}</version>
+    </dependency>
+    -->
+    <dependency>
+      <groupId>com.apigee.gateway.libraries</groupId>
+      <artifactId>message-flow</artifactId>
+      <version>1.0.0</version>
+      <scope>provided</scope>
+      <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>com.apigee.infra.libraries</groupId>
+      <artifactId>expressions</artifactId>
+      <version>1.0.0</version>
+      <scope>provided</scope>
+      <type>jar</type>
     </dependency>
 
     <dependency>
@@ -65,6 +88,7 @@
               <goal>copy-dependencies</goal>
             </goals>
             <configuration>
+              <excludeScope>provided</excludeScope>
               <outputDirectory>${project.build.directory}/lib</outputDirectory>
               <includeScope>runtime</includeScope>
               <overWriteReleases>false</overWriteReleases>
@@ -130,8 +154,7 @@
                 <copy todir="${apiproxy.java.rsrc.dir}">
                   <fileset dir="${project.build.directory}">
                     <include name="${project.build.finalName}.jar"/>
-                    <!-- copy any required dependencies tht are not
-                         already included in the Apigee runtime: -->
+                    <!-- copy any required dependencies here: -->
                     <include name="lib/*.jar"/>
                     <exclude name="lib/bcprov-jdk15on-*.*.jar"/>
                     <exclude name="lib/message-flow-1.0.0.jar"/>
