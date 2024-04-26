@@ -40,7 +40,7 @@ must use ServiceCallout or a target request to actually send the message._
 
 ## License
 
-This code is Copyright (c) 2020-2024 Google LLC, and is released under the
+This code is [Copyright (c) 2020-2024 Google LLC](./NOTICE), and is released under the
 Apache Source License v2.0. For information see the [LICENSE](LICENSE) file.
 
 ## Disclaimer
@@ -518,6 +518,13 @@ upload that jar file into the API Proxy via the Apigee API Proxy Editor .
    There are unit tests only; some that use test vectors provided previously by AWS, and
    also other tests that were developed independently.
 
+
+## Support
+
+This callout is open-source software, and is not a supported part of Apigee.  If
+you need assistance, you can try inquiring on [the Google Cloud Community forum
+dedicated to Apigee](https://goo.gle/apigee-community) There is no service-level
+guarantee for responses to inquiries posted to that forum; we do the best we can!
 
 ## Author
 
