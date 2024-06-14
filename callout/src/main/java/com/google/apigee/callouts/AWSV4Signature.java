@@ -3,7 +3,7 @@
 // This is the main callout class for the AES Crypto custom policy for Apigee Edge.
 // For full details see the Readme accompanying this source file.
 //
-// Copyright (c) 2021-2024 Google LLC.
+// Copyright © 2021-2024 Google LLC.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -283,8 +283,12 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
           List<String> paramValues = new ArrayList<String>(unmodifiableList);
           Collections.sort(paramValues);
           for (String paramValue : paramValues) {
-            encodedQparams.add(
-                encodeURIComponent(paramName) + "=" + encodeURIComponent(paramValue));
+            if (!paramValue.equals("")) {
+              encodedQparams.add(
+                  encodeURIComponent(paramName) + "=" + encodeURIComponent(paramValue));
+            } else {
+              encodedQparams.add(encodeURIComponent(paramName));
+            }
           }
         }
         setScope();

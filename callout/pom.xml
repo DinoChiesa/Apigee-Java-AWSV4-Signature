@@ -4,7 +4,7 @@
 
   <groupId>com.google.apigee</groupId>
   <artifactId>apigee-callout-awsv4sig</artifactId>
-  <version>20240426</version>
+  <version>20240614</version>
   <name>ApigeeAwsV4Sig</name>
   <url>http://maven.apache.org</url>
   <packaging>jar</packaging>
@@ -15,9 +15,9 @@
     <apigee.message.flow.version>1.0.0</apigee.message.flow.version>
     <mockito.all.version>1.10.19</mockito.all.version>
     <testng.version>6.8.7</testng.version> <!-- current: 6.9.4 -->
-    <bouncycastle.version>1.64</bouncycastle.version>
-    <jmockit.version>1.7</jmockit.version>
-    <jdk.target.version>1.8</jdk.target.version>
+    <bouncycastle.version>1.70</bouncycastle.version>
+    <jmockit.version>1.49</jmockit.version>
+    <jdk.target.version>11</jdk.target.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
@@ -30,18 +30,6 @@
   </repositories>
 
   <dependencies>
-    <!--
-    <dependency>
-      <groupId>com.apigee.edge</groupId>
-      <artifactId>message-flow</artifactId>
-      <version>${apigee.message.flow.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.apigee.edge</groupId>
-      <artifactId>expressions</artifactId>
-      <version>${apigee.expressions.version}</version>
-    </dependency>
-    -->
     <dependency>
       <groupId>com.apigee.gateway.libraries</groupId>
       <artifactId>message-flow</artifactId>
@@ -49,6 +37,7 @@
       <scope>provided</scope>
       <type>jar</type>
     </dependency>
+
     <dependency>
       <groupId>com.apigee.infra.libraries</groupId>
       <artifactId>expressions</artifactId>
@@ -65,7 +54,7 @@
     </dependency>
 
     <dependency>
-      <groupId>com.googlecode.jmockit</groupId>
+      <groupId>org.jmockit</groupId>
       <artifactId>jmockit</artifactId>
       <version>${jmockit.version}</version>
       <scope>test</scope>
@@ -88,9 +77,9 @@
               <goal>copy-dependencies</goal>
             </goals>
             <configuration>
+              <includeScope>runtime</includeScope>
               <excludeScope>provided</excludeScope>
               <outputDirectory>${project.build.directory}/lib</outputDirectory>
-              <includeScope>runtime</includeScope>
               <overWriteReleases>false</overWriteReleases>
               <overWriteSnapshots>false</overWriteSnapshots>
               <overWriteIfNewer>true</overWriteIfNewer>
@@ -102,10 +91,10 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.11.0</version>
+        <version>3.13.0</version>
         <configuration>
-          <source>${jdk.target.version}</source>
-          <target>${jdk.target.version}</target>
+          <showDeprecation>true</showDeprecation>
+          <release>${jdk.target.version}</release>
           <compilerArgs>
             <!-- <arg>-verbose</arg> -->
             <arg>-Xlint:unchecked,deprecation</arg>
@@ -116,7 +105,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>3.3.0</version>
+        <version>3.4.1</version>
         <configuration>
           <archive>
             <!-- do not include the pom.xml file in the generated jar -->
@@ -125,6 +114,15 @@
         </configuration>
       </plugin>
 
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <argLine>
+            -javaagent:"${settings.localRepository}"/org/jmockit/jmockit/${jmockit.version}/jmockit-${jmockit.version}.jar
+          </argLine>
+        </configuration>
+      </plugin>
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -187,7 +185,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
-        <version>3.3.0</version>
+        <version>3.5.0</version>
         <executions>
           <execution>
             <id>enforce-maven</id>
@@ -197,7 +195,7 @@
             <configuration>
               <rules>
                 <requireMavenVersion>
-                  <version>3.5.0</version>
+                  <version>3.9.0</version>
                 </requireMavenVersion>
               </rules>
             </configuration>
@@ -208,7 +206,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>versions-maven-plugin</artifactId>
-        <version>2.15.0</version>
+        <version>2.16.2</version>
         <executions>
           <execution>
             <phase>compile</phase>
