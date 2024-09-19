@@ -28,9 +28,9 @@ public class FakeMessageContext implements MessageContext {
   private Map<String, Object> variables;
   private Message message;
 
-  public FakeMessageContext() {
-    getVariables();
-  }
+  // public FakeMessageContext() {
+  //   getVariables();
+  // }
 
   public FakeMessageContext(Message message) {
     this.message = message;

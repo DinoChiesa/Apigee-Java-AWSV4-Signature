@@ -55,7 +55,7 @@ public class AWSV4Signature extends SignatureCalloutBase implements Execution {
   }
 
   protected static String hex(byte[] a) {
-    return Base16.encode(a);
+    return Base16.encode(a).toLowerCase();
   }
 
   protected static byte[] sha256(String s) throws java.security.NoSuchAlgorithmException {

@@ -10,6 +10,10 @@
   <packaging>jar</packaging>
 
   <properties>
+    <java.target.version>8</java.target.version>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.release>1.8</maven.compiler.release>
     <apiproxy.java.rsrc.dir>../bundle/apiproxy/resources/java</apiproxy.java.rsrc.dir>
     <apigee.expressions.version>1.0.0</apigee.expressions.version>
     <apigee.message.flow.version>1.0.0</apigee.message.flow.version>
@@ -17,7 +21,6 @@
     <testng.version>6.8.7</testng.version> <!-- current: 6.9.4 -->
     <bouncycastle.version>1.70</bouncycastle.version>
     <jmockit.version>1.49</jmockit.version>
-    <jdk.target.version>11</jdk.target.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
@@ -94,7 +97,11 @@
         <version>3.13.0</version>
         <configuration>
           <showDeprecation>true</showDeprecation>
-          <release>${jdk.target.version}</release>
+          <release>${java.target.version}</release>
+          <!-- the following may be necessary when building with java 1.8 -->
+          <source>${java.target.version}</source>
+          <target>${java.target.version}</target>
+
           <compilerArgs>
             <!-- <arg>-verbose</arg> -->
             <arg>-Xlint:unchecked,deprecation</arg>
